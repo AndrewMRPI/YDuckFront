@@ -1,6 +1,18 @@
 # Yellow Ducky Frontend
 
-Next.js frontend for Yellow Ducky Corp.
+Next.js frontend for Yellow Ducky Corp. The app uses the Go Cloud Run backend in
+`../../Backend/YDuckBack` for auth, players, and matches.
+
+## App Shape
+
+- `/` signs in enhanced guests and admins.
+- `/home` shows the authenticated home view.
+- `/players` lists players and recent match data.
+- `/admin/users/new` creates players.
+- `/admin/matches/new` creates matches.
+- API helpers live in `app/lib/yduck-client.ts`.
+- API schema types live in `app/lib/generated-api.ts` and are generated from
+  the backend OpenAPI file.
 
 ## Local Development
 
@@ -38,11 +50,18 @@ Generate frontend API schema types from the backend Swagger file:
 npm run generate:api
 ```
 
+By default, generation reads:
+
+```text
+../../Backend/YDuckBack/docs/swagger.yaml
+```
+
 ## Checks
 
 ```bash
 npm run lint
 npx tsc --noEmit
+npm run build
 ```
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

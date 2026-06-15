@@ -6,13 +6,46 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Project Context
 
-This repo backs the Yellow Ducky Corp personal website intended for deployment to Vercel at `yellowduckycorp.com`.
+This repo backs the Yellow Ducky Corp Next.js frontend intended for deployment
+to Vercel at `yellowduckycorp.com`. It talks to the Go Cloud Run backend in
+`../../Backend/YDuckBack`.
+
+## Repository Shape
+
+Prefer this shape unless the app design changes:
+
+- `app/page.tsx` is the sign-in screen for enhanced guest and admin sessions.
+- `app/home/page.tsx` is the authenticated home page.
+- `app/players/page.tsx` lists player records.
+- `app/admin/users/new/page.tsx` creates players through `POST /api/players`.
+- `app/admin/matches/new/page.tsx` creates matches through `POST /api/matches`.
+- `app/components/AppShell.tsx` owns authenticated navigation, session refresh,
+  and sign-out UI.
+- `app/components/DataViews.tsx` owns player and match views/forms.
+- `app/lib/yduck-client.ts` owns API base URL resolution, credentialed fetches,
+  session storage, and short-lived data caching.
+- `app/lib/generated-api.ts` is generated from the backend OpenAPI file; do not
+  hand-edit it.
+- `scripts/generate-api-types.mjs` reads
+  `../../Backend/YDuckBack/docs/swagger.yaml` by default.
+
+## Backend API Contract
+
+- Use `NEXT_PUBLIC_API_BASE_URL` for the backend URL. Local development defaults
+  to `http://localhost:8080`.
+- All backend calls must use `credentials: "include"` so the signed session
+  cookie reaches Cloud Run.
+- Regenerate API types with `npm run generate:api` after backend Swagger schema
+  changes.
+- Keep frontend route names and labels aligned with backend resources: backend
+  "players" are currently surfaced as admin "users" in the UI.
 
 ## Workflow
 
 - Treat `main` as the production branch.
 - Do not deploy to Vercel unless explicitly asked.
-- Run `npm run build` before committing deployable code changes.
+- Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before committing
+  deployable code changes.
 - Prefer small, focused commits with a clear purpose.
 - Preserve the existing GitHub remote and repo history unless the user explicitly asks to change them.
 

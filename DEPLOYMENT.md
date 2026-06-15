@@ -1,12 +1,16 @@
 # Yellow Ducky Corp Deployment Plan
 
-Goal: deploy this repo to Vercel for `yellowduckycorp.com`, starting from the imported Vercel Next.js example app.
+Goal: deploy this repo to Vercel for `yellowduckycorp.com`. The frontend expects
+the Cloud Run API URL in `NEXT_PUBLIC_API_BASE_URL`.
 
 ## Current Repo
 
 - Local path: repo root after cloning `AndrewMRPI/YDuckFront`
 - GitHub remote: `https://github.com/AndrewMRPI/YDuckFront.git`
 - App entry point: `app/page.tsx`
+- Authenticated app routes: `app/home`, `app/players`, `app/admin/users/new`,
+  and `app/admin/matches/new`
+- Backend API contract: `../../Backend/YDuckBack/docs/swagger.yaml`
 - Production branch: `main`
 
 ## First: Deploy Locally
@@ -16,6 +20,7 @@ Before deploying to Vercel, run the production build locally and verify the site
 ```bash
 cd YDuckFront
 npm install
+npm run generate:api
 npm run build
 npm run start
 ```
@@ -30,9 +35,18 @@ Check the page, navigation, images, layout, and browser console. Stop the local 
 
 ## One-Time Vercel Setup
 
+Set the backend API URL before production deploys:
+
+```bash
+vercel env add NEXT_PUBLIC_API_BASE_URL production
+```
+
+Use the Cloud Run service URL, for example `https://SERVICE_URL`.
+
 ```bash
 cd YDuckFront
 npm install
+npm run generate:api
 npm run build
 npm i -g vercel
 vercel login
@@ -67,6 +81,7 @@ Deploy the current local checkout to Vercel production:
 
 ```bash
 cd YDuckFront
+npm run generate:api
 npm run build
 vercel deploy --prod --yes
 ```
@@ -107,6 +122,9 @@ vercel deploy --prod --yes
 ```bash
 cd YDuckFront
 $EDITOR app/page.tsx
+npm run generate:api
+npm run lint
+npx tsc --noEmit
 npm run build
 npm run start
 git status
@@ -145,17 +163,22 @@ If those return `HTTP 200`, Vercel is serving the site and the remaining issue i
 
 1. Ask Codex to make a site change.
 2. Codex edits the relevant app files.
-3. Codex runs `npm run build`.
-4. Codex runs `npm run start` and verifies the local production site.
-5. Codex commits with a descriptive subject and body.
-6. Codex pushes to GitHub only when asked.
-7. Vercel deploys automatically from GitHub.
-8. Codex verifies the live domain if deployment was requested.
+3. Codex runs `npm run generate:api` when the backend schema may have changed.
+4. Codex runs `npm run lint`, `npx tsc --noEmit`, and `npm run build`.
+5. Codex runs `npm run start` and verifies the local production site when the
+   change affects runtime behavior.
+6. Codex commits with a descriptive subject and body when asked.
+7. Codex pushes to GitHub only when asked.
+8. Vercel deploys automatically from GitHub.
+9. Codex verifies the live domain if deployment was requested.
 
 Useful checks:
 
 ```bash
 git status
+npm run generate:api
+npm run lint
+npx tsc --noEmit
 npm run build
 npm run start
 vercel list
