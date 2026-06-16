@@ -26,10 +26,12 @@ export function roundedHourDate(value?: string) {
 }
 
 export function gameTypeLabel(value?: string) {
-  if (value === "east") {
+  const normalized = value?.trim().toLowerCase();
+
+  if (normalized === "east") {
     return "East game";
   }
-  if (value === "south") {
+  if (normalized === "south") {
     return "South game";
   }
   return "Game";

@@ -33,6 +33,10 @@ function useYduckData() {
 export function MatchList() {
   const { data, error, loading } = useYduckData();
 
+  function matchHref(match: Match) {
+    return `/match/${encodeURIComponent(match.id)}`;
+  }
+
   function playerHref(player: Match["players"][number]) {
     return `/player/${encodeURIComponent(player.playerId)}`;
   }
@@ -47,11 +51,18 @@ export function MatchList() {
       <div className="grid gap-3">
         {data?.matches.map((match) => {
           return (
-            <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm" key={match.id}>
+            <article
+              className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm"
+              key={match.id}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[#697061]">{gameTypeLabel(match.gameType)}</p>
-                  <h3 className="text-xl font-bold">{roundedHourDate(match.gameTime)}</h3>
+                  <h3 className="text-xl font-bold">
+                    <Link className="underline decoration-[#b9aa70] underline-offset-4 hover:text-[#5f4c00]" href={matchHref(match)}>
+                      {roundedHourDate(match.gameTime)}
+                    </Link>
+                  </h3>
                 </div>
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">

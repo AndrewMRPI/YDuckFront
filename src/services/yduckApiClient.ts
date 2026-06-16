@@ -17,7 +17,7 @@ export type CachedYduckData = {
   fetchedAt: number;
 };
 
-const cacheKey = "yduck:data-cache:v1";
+const cacheKey = "yduck:data-cache:v2";
 const sessionKey = "yduck:session:v1";
 const ttlMs = 3 * 60 * 1000;
 
@@ -137,6 +137,11 @@ export async function loadYduckData(force = false): Promise<CachedYduckData> {
   };
   writeCachedData(cache);
   return cache;
+}
+
+export async function loadMatch(id: string) {
+  const response = await apiRequest<MatchResponse>(`/api/matches/${encodeURIComponent(id)}`);
+  return response.match;
 }
 
 export async function signOut() {
