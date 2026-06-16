@@ -14,7 +14,7 @@ export default function SignOnPage() {
 
   async function finishSignIn(session: Session) {
     storeSession(session);
-    await loadYduckData(true).catch(() => undefined);
+    await loadYduckData().catch(() => undefined);
     router.replace("/overall-match-history");
   }
 

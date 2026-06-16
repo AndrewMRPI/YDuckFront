@@ -8,7 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { calculateGamePoints } from "@/scoring/gamePoints";
 import { loadMatchesByPlayer, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
-import { rankedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+import { rankedMatchPlayers, seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 type PlayerPageProps = {
   id: string;
@@ -216,7 +216,7 @@ function PlacementChart({ points }: { points: PlacementPoint[] }) {
             if (!point) {
               return "";
             }
-            const placements = rankedMatchPlayers(point.match)
+            const placements = seatedMatchPlayers(point.match)
               .map(
                 (player) => `
                   <div class="flex items-center justify-between gap-6 text-[#697061]">

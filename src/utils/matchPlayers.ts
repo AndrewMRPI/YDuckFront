@@ -17,3 +17,12 @@ export function rankedMatchPlayers(match: Match): RankedMatchPlayer[] {
     .sort((a, b) => b.score - a.score || a.seatIndex - b.seatIndex)
     .map((player, index) => ({ ...player, effectivePlace: index + 1 }));
 }
+
+export function seatedMatchPlayers(match: Match): RankedMatchPlayer[] {
+  const placementByPlayerId = new Map(rankedMatchPlayers(match).map((player) => [player.playerId, player.effectivePlace]));
+  return match.players.map((player, seatIndex) => ({
+    ...player,
+    effectivePlace: placementByPlayerId.get(player.playerId) || seatIndex + 1,
+    seatIndex,
+  }));
+}

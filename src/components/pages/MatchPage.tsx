@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { calculateGamePointBreakdowns } from "@/scoring/gamePoints";
 import { loadMatch, Match } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate, roundedHourDate } from "@/utils/matchFormatting";
-import { rankedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+import { seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 type MatchPageProps = {
   id: string;
@@ -54,7 +54,7 @@ export default function MatchPage({ id }: MatchPageProps) {
     };
   }, [id]);
 
-  const players = useMemo(() => (match ? rankedMatchPlayers(match) : []), [match]);
+  const players = useMemo(() => (match ? seatedMatchPlayers(match) : []), [match]);
   const gamePointsByPlayer = useMemo(() => {
     return new Map((match ? calculateGamePointBreakdowns(match) : []).map((result) => [result.playerId, result]));
   }, [match]);

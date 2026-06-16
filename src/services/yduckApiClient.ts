@@ -11,15 +11,12 @@ export type ListPlayersResponse = ApiSchemas["ListPlayersResponse"];
 export type MatchResponse = ApiSchemas["MatchResponse"];
 export type PlayerResponse = ApiSchemas["PlayerResponse"];
 
-export type CachedYduckData = {
+export type YduckData = {
   matches: Match[];
   players: Player[];
-  fetchedAt: number;
 };
 
-const cacheKey = "yduck:data-cache:v2";
 const sessionKey = "yduck:session:v1";
-const ttlMs = 3 * 60 * 1000;
 
 export const fallbackSession: Session = {
   authenticated: false,
@@ -76,67 +73,24 @@ export function storeSession(session: Session) {
 
 export function clearSession() {
   window.localStorage.removeItem(sessionKey);
-  clearCachedData();
-}
-
-export function isFresh(cache: CachedYduckData) {
-  return Date.now() - cache.fetchedAt < ttlMs;
-}
-
-export function readCachedData(): CachedYduckData | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(cacheKey);
-    if (!raw) {
-      return null;
-    }
-    const cache = JSON.parse(raw) as CachedYduckData;
-    return isFresh(cache) ? cache : null;
-  } catch {
-    return null;
-  }
-}
-
-export function writeCachedData(cache: CachedYduckData) {
-  window.localStorage.setItem(cacheKey, JSON.stringify(cache));
-}
-
-export function clearCachedData() {
-  window.localStorage.removeItem(cacheKey);
 }
 
 export async function refreshSession() {
   const session = await apiRequest<Session>("/auth/session");
   storeSession(session);
-  if (!session.authenticated) {
-    clearCachedData();
-  }
   return session;
 }
 
-export async function loadYduckData(force = false): Promise<CachedYduckData> {
-  if (!force) {
-    const cache = readCachedData();
-    if (cache) {
-      return cache;
-    }
-  }
-
+export async function loadYduckData(): Promise<YduckData> {
   const [matchesResponse, playersResponse] = await Promise.all([
     apiRequest<ListMatchesResponse>("/api/matches"),
     apiRequest<ListPlayersResponse>("/api/players"),
   ]);
 
-  const cache = {
+  return {
     matches: matchesResponse.matches || [],
     players: playersResponse.players || [],
-    fetchedAt: Date.now(),
   };
-  writeCachedData(cache);
-  return cache;
 }
 
 export async function loadMatch(id: string) {

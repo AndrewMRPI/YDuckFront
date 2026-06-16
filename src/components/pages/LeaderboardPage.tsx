@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { CachedYduckData, loadYduckData, Match, Player } from "@/services/yduckApiClient";
+import { loadYduckData, Match, Player, YduckData } from "@/services/yduckApiClient";
 import { calculateGamePoints } from "@/scoring/gamePoints";
 import { rankedMatchPlayers } from "@/utils/matchPlayers";
 
@@ -139,7 +139,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
 }
 
 export default function LeaderboardPage() {
-  const [data, setData] = useState<CachedYduckData | null>(null);
+  const [data, setData] = useState<YduckData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 

@@ -2,24 +2,24 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CachedYduckData, loadYduckData, Match } from "@/services/yduckApiClient";
+import { loadYduckData, Match, YduckData } from "@/services/yduckApiClient";
 import { gameTypeLabel, roundedHourDate } from "@/utils/matchFormatting";
-import { rankedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+import { seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 function placementLabel(place: number) {
   return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
 }
 
 function useYduckData() {
-  const [data, setData] = useState<CachedYduckData | null>(null);
+  const [data, setData] = useState<YduckData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  async function reload(force = false) {
+  async function reload() {
     setLoading(true);
     setError("");
     try {
-      const next = await loadYduckData(force);
+      const next = await loadYduckData();
       setData(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load data.");
@@ -71,7 +71,7 @@ export function MatchList() {
                 </div>
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {rankedMatchPlayers(match)
+                {seatedMatchPlayers(match)
                   .map((player) => (
                     <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
                       <p className="font-semibold">
