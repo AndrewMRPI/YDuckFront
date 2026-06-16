@@ -108,7 +108,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
 
   const withStats: LeaderboardRow[] = Array.from(rows.values()).map((row) => {
     const status: LeaderboardStatus = row.activeGames >= activeGameMinimum ? "active" : "provisional";
-    const score = row.activeScore;
+    const score = row.totalScore;
 
     return {
       ...row,
@@ -121,7 +121,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   // Only active players receive official ranks; provisional rows stay visible.
   const activeRows = withStats
     .filter((row) => row.status === "active")
-    .sort((a, b) => b.activeScore - a.activeScore || b.totalScore - a.totalScore || a.playerName.localeCompare(b.playerName));
+    .sort((a, b) => b.totalScore - a.totalScore || b.activeScore - a.activeScore || a.playerName.localeCompare(b.playerName));
 
   activeRows.forEach((row, index) => {
     row.rank = index + 1;
@@ -131,7 +131,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     const statusOrder = { active: 0, provisional: 1 };
     return (
       statusOrder[a.status] - statusOrder[b.status] ||
-      b.activeScore - a.activeScore ||
+      b.totalScore - a.totalScore ||
       b.totalGames - a.totalGames ||
       a.playerName.localeCompare(b.playerName)
     );
@@ -176,7 +176,7 @@ export default function LeaderboardPage() {
       <section className="space-y-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold">Leaderboard</h2>
-          <p className="text-sm text-[#697061]">Scores use total game points from matches in the last 3 months.</p>
+          <p className="text-sm text-[#697061]">Scores use total game points from all matches.</p>
         </div>
 
         {loading && <p className="text-sm text-[#697061]">Loading leaderboard...</p>}

@@ -15,11 +15,11 @@ type PlayerPageProps = {
 };
 
 type PlacementPoint = {
-  activeScore: number;
   gamePoints: number;
   match: Match;
   place: number;
   score: number;
+  totalScore: number;
 };
 
 type LeaderboardStatus = "active" | "provisional";
@@ -137,14 +137,14 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     return {
       ...row,
       rank: null,
-      score: row.activeScore,
+      score: row.totalScore,
       status,
     };
   });
 
   withStats
     .filter((row) => row.status === "active")
-    .sort((a, b) => b.activeScore - a.activeScore || b.totalScore - a.totalScore || a.playerName.localeCompare(b.playerName))
+    .sort((a, b) => b.totalScore - a.totalScore || b.activeScore - a.activeScore || a.playerName.localeCompare(b.playerName))
     .forEach((row, index) => {
       row.rank = index + 1;
     });
@@ -152,7 +152,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   return withStats;
 }
 
-function PlacementChart({ points }: { points: PlacementPoint[] }) {
+function PlacementChart({ playerId, points }: { playerId: string; points: PlacementPoint[] }) {
   const router = useRouter();
   const chartRef = useRef<HTMLDivElement | null>(null);
   const tooltipPoints = useMemo(() => points, [points]);
@@ -217,14 +217,15 @@ function PlacementChart({ points }: { points: PlacementPoint[] }) {
               return "";
             }
             const placements = seatedMatchPlayers(point.match)
-              .map(
-                (player) => `
-                  <div class="flex items-center justify-between gap-6 text-[#697061]">
+              .map((player) => {
+                const isCurrentPlayer = player.playerId === playerId;
+                return `
+                  <div class="flex items-center justify-between gap-6 ${isCurrentPlayer ? "font-bold text-[#25291f]" : "text-[#697061]"}">
                     <span>${placementLabel(player.effectivePlace)} - ${seatLabel(player.seatIndex)} ${player.playerName || player.playerId}</span>
                     <span>Score ${player.score}</span>
                   </div>
-                `
-              )
+                `;
+              })
               .join("");
 
             return `
@@ -232,7 +233,7 @@ function PlacementChart({ points }: { points: PlacementPoint[] }) {
                 <div class="font-semibold text-[#25291f]">${placementLabel(point.place)} place (${signedNumber(point.gamePoints)})</div>
                 <div class="text-[#697061]">${gameTypeLabel(point.match.gameType)} - ${niceDate(point.match.gameTime)}</div>
                 <div class="text-[#697061]">${signedNumber(point.gamePoints)}</div>
-                <div class="text-[#697061]">Score after ${signedNumber(point.activeScore)}</div>
+                <div class="text-[#697061]">Score after ${signedNumber(point.totalScore)}</div>
                 <div class="mt-2 grid gap-1">${placements}</div>
               </div>
             `;
@@ -270,7 +271,7 @@ function PlacementChart({ points }: { points: PlacementPoint[] }) {
       alive = false;
       chart?.destroy();
     };
-  }, [points, router, tooltipPoints]);
+  }, [playerId, points, router, tooltipPoints]);
 
   if (points.length === 0) {
     return <p className="text-sm text-[#697061]">No matches yet.</p>;
@@ -347,16 +348,14 @@ export default function PlayerPage({ id }: PlayerPageProps) {
       .filter((point): point is NonNullable<typeof point> => point !== null);
 
     return records.map((record, index) => {
-      const windowStart = subtractMonths(record.matchTime, activeWindowMonths);
-      const activeRecords = records.slice(0, index + 1).filter((point) => point.matchTime >= windowStart && point.matchTime <= record.matchTime);
-      const activeScore = activeRecords.reduce((sum, point) => sum + point.gamePoints, 0);
+      const totalScore = records.slice(0, index + 1).reduce((sum, point) => sum + point.gamePoints, 0);
 
       return {
-        activeScore,
         gamePoints: record.gamePoints,
         match: record.match,
         place: record.place,
         score: record.score,
+        totalScore,
       };
     });
   }, [id, state.matches]);
@@ -414,7 +413,7 @@ export default function PlayerPage({ id }: PlayerPageProps) {
           <div className="mb-4 flex flex-col gap-1">
             <h3 className="text-xl font-bold">Placements over time</h3>
           </div>
-          <PlacementChart points={placementPoints} />
+          <PlacementChart playerId={id} points={placementPoints} />
         </article>
       </section>
     </AppShell>
