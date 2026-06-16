@@ -28,12 +28,10 @@ export type ApiSchemas = {
     "playerId": string;
     "playerName": string;
     "score": number;
-    "place": number;
   };
   "AddMatchPlayerRequest": {
     "playerId": string;
     "score": number;
-    "place": number;
   };
   "Match": {
     "id": string;

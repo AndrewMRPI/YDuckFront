@@ -1,8 +1,18 @@
 import type { Match } from "@/services/yduckApiClient";
+import { rankedMatchPlayers } from "@/utils/matchPlayers";
 
 export type GamePointResult = {
   playerId: string;
   gamePoints: number;
+};
+
+export type GamePointBreakdown = GamePointResult & {
+  adjustment: number;
+  basePoints: number;
+  effectivePlace: number;
+  score: number;
+  startingPoints: number;
+  uma: number;
 };
 
 const fourPlayerStartingPoints = 25000;
@@ -24,17 +34,29 @@ function pointsConfig(playerCount: number) {
 }
 
 export function calculateGamePoints(match: Match): GamePointResult[] {
-  const { startingPoints, uma } = pointsConfig(match.players.length);
-  const results = match.players.map((player) => ({
+  return calculateGamePointBreakdowns(match).map(({ playerId, gamePoints }) => ({ playerId, gamePoints }));
+}
+
+export function calculateGamePointBreakdowns(match: Match): GamePointBreakdown[] {
+  const players = rankedMatchPlayers(match);
+  const { startingPoints, uma } = pointsConfig(players.length);
+  const results = players.map((player) => ({
+    adjustment: 0,
+    basePoints: roundHalfDown((player.score - startingPoints) / 1000),
+    effectivePlace: player.effectivePlace,
+    gamePoints: roundHalfDown((player.score - startingPoints) / 1000) + (uma[player.effectivePlace - 1] || 0),
     playerId: player.playerId,
-    gamePoints: roundHalfDown((player.score - startingPoints) / 1000) + (uma[player.place - 1] || 0),
+    score: player.score,
+    startingPoints,
+    uma: uma[player.effectivePlace - 1] || 0,
   }));
   const adjustment = results.reduce((sum, result) => sum + result.gamePoints, 0);
-  const winner = results.find((result) => match.players.find((player) => player.playerId === result.playerId)?.place === 1);
+  const winner = results.find((result) => players.find((player) => player.playerId === result.playerId)?.effectivePlace === 1);
 
   // Keep each match table-neutral after per-player rounding.
   if (winner && adjustment !== 0) {
     winner.gamePoints -= adjustment;
+    winner.adjustment = -adjustment;
   }
 
   return results;

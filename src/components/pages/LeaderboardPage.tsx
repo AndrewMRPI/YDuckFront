@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CachedYduckData, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { calculateGamePoints } from "@/scoring/gamePoints";
+import { rankedMatchPlayers } from "@/utils/matchPlayers";
 
 type LeaderboardStatus = "active" | "provisional";
 
@@ -91,12 +92,12 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
     const gamePointsByPlayer = new Map(calculateGamePoints(match).map((result) => [result.playerId, result.gamePoints]));
 
-    match.players.forEach((player) => {
+    rankedMatchPlayers(match).forEach((player) => {
       const row = ensureRow(player.playerId, player.playerName);
       const gamePoints = gamePointsByPlayer.get(player.playerId) || 0;
       row.totalGames += 1;
       row.totalScore += gamePoints;
-      row.placeCounts[player.place - 1] += 1;
+      row.placeCounts[player.effectivePlace - 1] += 1;
 
       if (isActiveWindow) {
         row.activeGames += 1;

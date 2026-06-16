@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CachedYduckData, loadYduckData, Match } from "@/services/yduckApiClient";
 import { gameTypeLabel, roundedHourDate } from "@/utils/matchFormatting";
+import { rankedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+
+function placementLabel(place: number) {
+  return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
+}
 
 function useYduckData() {
   const [data, setData] = useState<CachedYduckData | null>(null);
@@ -66,12 +71,11 @@ export function MatchList() {
                 </div>
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {[...match.players]
-                  .sort((a, b) => a.place - b.place)
+                {rankedMatchPlayers(match)
                   .map((player) => (
                     <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
                       <p className="font-semibold">
-                        {player.place}.{" "}
+                        {placementLabel(player.effectivePlace)} - {seatLabel(player.seatIndex)}{" "}
                         <Link className="underline decoration-[#b9aa70] underline-offset-4 hover:text-[#5f4c00]" href={playerHref(player)}>
                           {player.playerName || player.playerId}
                         </Link>

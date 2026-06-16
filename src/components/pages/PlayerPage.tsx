@@ -8,6 +8,7 @@ import { AppShell } from "@/components/AppShell";
 import { calculateGamePoints } from "@/scoring/gamePoints";
 import { loadMatchesByPlayer, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
+import { rankedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 type PlayerPageProps = {
   id: string;
@@ -79,7 +80,7 @@ function matchHref(match: Match) {
 }
 
 function getPlayerResult(match: Match, playerId: string) {
-  return match.players.find((player) => player.playerId === playerId);
+  return rankedMatchPlayers(match).find((player) => player.playerId === playerId);
 }
 
 function placementLabel(place: number) {
@@ -120,12 +121,12 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
     const gamePointsByPlayer = new Map(calculateGamePoints(match).map((result) => [result.playerId, result.gamePoints]));
 
-    match.players.forEach((player) => {
+    rankedMatchPlayers(match).forEach((player) => {
       const row = ensureRow(player.playerId, player.playerName);
       const gamePoints = gamePointsByPlayer.get(player.playerId) || 0;
       row.activeGames += isActiveWindow ? 1 : 0;
       row.activeScore += isActiveWindow ? gamePoints : 0;
-      row.placeCounts[player.place - 1] += 1;
+      row.placeCounts[player.effectivePlace - 1] += 1;
       row.totalGames += 1;
       row.totalScore += gamePoints;
     });
@@ -215,12 +216,11 @@ function PlacementChart({ points }: { points: PlacementPoint[] }) {
             if (!point) {
               return "";
             }
-            const placements = [...point.match.players]
-              .sort((a, b) => a.place - b.place)
+            const placements = rankedMatchPlayers(point.match)
               .map(
                 (player) => `
                   <div class="flex items-center justify-between gap-6 text-[#697061]">
-                    <span>${placementLabel(player.place)} ${player.playerName || player.playerId}</span>
+                    <span>${placementLabel(player.effectivePlace)} - ${seatLabel(player.seatIndex)} ${player.playerName || player.playerId}</span>
                     <span>Score ${player.score}</span>
                   </div>
                 `
@@ -340,7 +340,7 @@ export default function PlayerPage({ id }: PlayerPageProps) {
           gamePoints: calculateGamePoints(match).find((point) => point.playerId === id)?.gamePoints || 0,
           match,
           matchTime: new Date(match.gameTime),
-          place: result.place,
+          place: result.effectivePlace,
           score: result.score,
         };
       })
