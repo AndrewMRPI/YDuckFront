@@ -1,7 +1,6 @@
 "use client";
 
 import type { ApexOptions } from "apexcharts";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -369,10 +368,6 @@ export default function PlayerPage({ id }: PlayerPageProps) {
   return (
     <AppShell>
       <section className="max-w-4xl space-y-4">
-        <Link className="text-sm font-semibold text-[#5f4c00] underline decoration-[#b9aa70] underline-offset-4" href="/leaderboard">
-          Back to leaderboard
-        </Link>
-
         {loading && <p className="text-sm text-[#697061]">Loading player...</p>}
         {state.error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{state.error}</p>}
 
