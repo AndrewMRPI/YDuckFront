@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CachedYduckData, loadYduckData, Match } from "@/services/yduckApiClient";
-import { durationLabel, roundedHourDate } from "@/utils/matchFormatting";
+import { gameTypeLabel, roundedHourDate } from "@/utils/matchFormatting";
 
 function useYduckData() {
   const [data, setData] = useState<CachedYduckData | null>(null);
@@ -50,7 +50,7 @@ export function MatchList() {
             <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm" key={match.id}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-[#697061]">Duration {durationLabel(match.durationSeconds)}</p>
+                  <p className="text-sm font-semibold text-[#697061]">{gameTypeLabel(match.gameType)}</p>
                   <h3 className="text-xl font-bold">{roundedHourDate(match.gameTime)}</h3>
                 </div>
               </div>

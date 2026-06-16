@@ -25,7 +25,12 @@ export function roundedHourDate(value?: string) {
   });
 }
 
-export function durationLabel(seconds: number) {
-  const minutes = Math.round(seconds / 60);
-  return minutes > 0 ? `${minutes} min` : `${seconds} sec`;
+export function gameTypeLabel(value?: string) {
+  if (value === "east") {
+    return "East game";
+  }
+  if (value === "south") {
+    return "South game";
+  }
+  return "Game";
 }
