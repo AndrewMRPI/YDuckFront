@@ -9,7 +9,7 @@ const defaultSwaggerPath = resolve(frontendRoot, "../../Backend/YDuckBack/docs/s
 const swaggerPath = process.env.OPENAPI_PATH
   ? resolve(frontendRoot, process.env.OPENAPI_PATH)
   : defaultSwaggerPath;
-const outputPath = resolve(frontendRoot, "app/lib/generated-api.ts");
+const outputPath = resolve(frontendRoot, "src/types/generatedApiTypes.ts");
 
 const document = yaml.load(readFileSync(swaggerPath, "utf8"));
 const schemas = document?.components?.schemas;

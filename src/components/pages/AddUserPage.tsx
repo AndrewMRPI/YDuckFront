@@ -1,5 +1,5 @@
-import { AppShell } from "../../../components/AppShell";
-import { AddUserForm } from "../../../components/DataViews";
+import { AppShell } from "@/components/AppShell";
+import { AddUserForm } from "@/components/DataViews";
 
 export default function AddUserPage() {
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   apiRequest,
   CachedYduckData,
@@ -9,20 +9,8 @@ import {
   Match,
   Player,
   readStoredSession,
-} from "../lib/yduck-client";
-
-function niceDate(value?: string) {
-  if (!value) {
-    return "No date";
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "No date" : date.toLocaleString();
-}
-
-function durationLabel(seconds: number) {
-  const minutes = Math.round(seconds / 60);
-  return minutes > 0 ? `${minutes} min` : `${seconds} sec`;
-}
+} from "@/services/yduckApiClient";
+import { durationLabel, niceDate } from "@/utils/matchFormatting";
 
 function useYduckData() {
   const [data, setData] = useState<CachedYduckData | null>(null);
@@ -52,7 +40,6 @@ function useYduckData() {
 export function MatchList() {
   const { data, error, loading, reload } = useYduckData();
   const isAdmin = readStoredSession().role === "admin";
-  const playerIds = useMemo(() => new Set(data?.players.map((player) => player.id) || []), [data]);
 
   async function deleteMatch(id: string) {
     await apiRequest<void>(`/api/matches/${id}`, { method: "DELETE" });
@@ -63,20 +50,12 @@ export function MatchList() {
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">Home</h2>
-        <button
-          className="h-10 rounded-md border border-[#b9aa70] bg-white px-4 text-sm font-semibold hover:border-[#1f2720]"
-          type="button"
-          onClick={() => reload(true)}
-        >
-          Refresh
-        </button>
+        <h2 className="text-2xl font-bold">Overall Match History</h2>
       </div>
       {loading && <p className="text-sm text-[#697061]">Loading matches...</p>}
       {error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{error}</p>}
       <div className="grid gap-3">
         {data?.matches.map((match) => {
-          const missingUser = match.players.some((player) => !playerIds.has(player.playerId));
           return (
             <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm" key={match.id}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -85,13 +64,6 @@ export function MatchList() {
                   <h3 className="text-xl font-bold">{durationLabel(match.durationSeconds)}</h3>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <span
-                    className={`rounded-md px-3 py-1 text-sm font-semibold ${
-                      missingUser ? "bg-[#ffe2d8] text-[#8a261f]" : "bg-[#e2f0dd] text-[#2c6b35]"
-                    }`}
-                  >
-                    {missingUser ? "Missing user" : "Users linked"}
-                  </span>
                   {isAdmin && (
                     <button
                       className="rounded-md border border-[#c98a80] px-3 py-1 text-sm font-semibold text-[#8a261f] hover:bg-[#fff3f0]"
@@ -139,13 +111,6 @@ export function PlayerList() {
     <section className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">List Player</h2>
-        <button
-          className="h-10 rounded-md border border-[#b9aa70] bg-white px-4 text-sm font-semibold hover:border-[#1f2720]"
-          type="button"
-          onClick={() => reload(true)}
-        >
-          Refresh
-        </button>
       </div>
       {loading && <p className="text-sm text-[#697061]">Loading players...</p>}
       {error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{error}</p>}

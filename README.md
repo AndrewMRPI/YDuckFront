@@ -6,12 +6,14 @@ Next.js frontend for Yellow Ducky Corp. The app uses the Go Cloud Run backend in
 ## App Shape
 
 - `/` signs in enhanced guests and admins.
-- `/home` shows the authenticated home view.
+- `/overall-match-history` shows the authenticated match history view.
 - `/players` lists players and recent match data.
 - `/admin/users/new` creates players.
 - `/admin/matches/new` creates matches.
-- API helpers live in `app/lib/yduck-client.ts`.
-- API schema types live in `app/lib/generated-api.ts` and are generated from
+- Route files live in `src/app`.
+- Shared UI components live in `src/components`.
+- API helpers live in `src/services/yduckApiClient.ts`.
+- API schema types live in `src/types/generatedApiTypes.ts` and are generated from
   the backend OpenAPI file.
 
 ## Local Development

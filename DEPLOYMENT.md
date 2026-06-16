@@ -7,9 +7,9 @@ the Cloud Run API URL in `NEXT_PUBLIC_API_BASE_URL`.
 
 - Local path: repo root after cloning `AndrewMRPI/YDuckFront`
 - GitHub remote: `https://github.com/AndrewMRPI/YDuckFront.git`
-- App entry point: `app/page.tsx`
-- Authenticated app routes: `app/home`, `app/players`, `app/admin/users/new`,
-  and `app/admin/matches/new`
+- App entry point: `src/app/page.tsx`
+- Authenticated app routes: `src/app/overall-match-history`, `src/app/players`, `src/app/admin/users/new`,
+  and `src/app/admin/matches/new`
 - Backend API contract: `../../Backend/YDuckBack/docs/swagger.yaml`
 - Production branch: `main`
 
@@ -121,7 +121,7 @@ vercel deploy --prod --yes
 
 ```bash
 cd YDuckFront
-$EDITOR app/page.tsx
+$EDITOR src/app/page.tsx
 npm run generate:api
 npm run lint
 npx tsc --noEmit

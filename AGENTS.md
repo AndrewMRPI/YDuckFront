@@ -14,18 +14,20 @@ to Vercel at `yellowduckycorp.com`. It talks to the Go Cloud Run backend in
 
 Prefer this shape unless the app design changes:
 
-- `app/page.tsx` is the sign-in screen for enhanced guest and admin sessions.
-- `app/home/page.tsx` is the authenticated home page.
-- `app/players/page.tsx` lists player records.
-- `app/admin/users/new/page.tsx` creates players through `POST /api/players`.
-- `app/admin/matches/new/page.tsx` creates matches through `POST /api/matches`.
-- `app/components/AppShell.tsx` owns authenticated navigation, session refresh,
+- `src/app/page.tsx` is the sign-in route for enhanced guest and admin sessions.
+- `src/app/overall-match-history/page.tsx` is the authenticated match history route.
+- `src/app/players/page.tsx` lists player records.
+- `src/app/admin/users/new/page.tsx` creates players through `POST /api/players`.
+- `src/app/admin/matches/new/page.tsx` creates matches through `POST /api/matches`.
+- `src/components/AppShell.tsx` owns authenticated navigation, session refresh,
   and sign-out UI.
-- `app/components/DataViews.tsx` owns player and match views/forms.
-- `app/lib/yduck-client.ts` owns API base URL resolution, credentialed fetches,
+- `src/components/DataViews.tsx` owns player and match views/forms.
+- `src/components/pages` holds the page-level UI components imported by route files.
+- `src/services/yduckApiClient.ts` owns API base URL resolution, credentialed fetches,
   session storage, and short-lived data caching.
-- `app/lib/generated-api.ts` is generated from the backend OpenAPI file; do not
+- `src/types/generatedApiTypes.ts` is generated from the backend OpenAPI file; do not
   hand-edit it.
+- `src/utils` holds shared formatting and utility helpers.
 - `scripts/generate-api-types.mjs` reads
   `../../Backend/YDuckBack/docs/swagger.yaml` by default.
 

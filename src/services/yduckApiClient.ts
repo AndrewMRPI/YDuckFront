@@ -1,6 +1,6 @@
 "use client";
 
-import type { ApiSchemas } from "./generated-api";
+import type { ApiSchemas } from "@/types/generatedApiTypes";
 
 export type Role = ApiSchemas["SessionResponse"]["role"];
 export type Session = ApiSchemas["SessionResponse"];
@@ -31,14 +31,20 @@ export function apiBaseUrl() {
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBaseUrl()}${path}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+  const url = `${apiBaseUrl()}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+  } catch {
+    throw new Error(`Could not reach API at ${apiBaseUrl()}. Check that the backend is running and allows this frontend origin.`);
+  }
 
   if (response.status === 204) {
     return undefined as T;

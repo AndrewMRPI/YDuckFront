@@ -1,5 +1,5 @@
-import { AppShell } from "../../../components/AppShell";
-import { AddMatchForm } from "../../../components/DataViews";
+import { AppShell } from "@/components/AppShell";
+import { AddMatchForm } from "@/components/DataViews";
 
 export default function AddMatchPage() {
   return (

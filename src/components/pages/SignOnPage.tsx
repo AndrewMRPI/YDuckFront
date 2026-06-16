@@ -2,9 +2,9 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest, clearSession, loadYduckData, refreshSession, Session, storeSession } from "./lib/yduck-client";
+import { apiRequest, clearSession, loadYduckData, refreshSession, Session, storeSession } from "@/services/yduckApiClient";
 
-export default function SignOn() {
+export default function SignOnPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
@@ -15,7 +15,7 @@ export default function SignOn() {
   async function finishSignIn(session: Session) {
     storeSession(session);
     await loadYduckData(true).catch(() => undefined);
-    router.replace("/home");
+    router.replace("/overall-match-history");
   }
 
   async function submitGuest(event: FormEvent<HTMLFormElement>) {
@@ -34,8 +34,8 @@ export default function SignOn() {
         body: JSON.stringify({ password }),
       });
       await finishSignIn(session);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Sign-in failed.");
+    } catch {
+      setStatus("No");
     } finally {
       setBusy(false);
     }
@@ -51,21 +51,23 @@ export default function SignOn() {
         body: JSON.stringify({ password: adminPassword }),
       });
       await finishSignIn(session);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Admin sign-in failed.");
+    } catch {
+      setStatus("No");
     } finally {
       setBusy(false);
     }
   }
 
   useEffect(() => {
-    refreshSession().then((session) => {
-      if (session.authenticated) {
-        router.replace("/home");
-      }
-    }).catch(() => {
-      clearSession();
-    });
+    refreshSession()
+      .then((session) => {
+        if (session.authenticated) {
+          router.replace("/overall-match-history");
+        }
+      })
+      .catch(() => {
+        clearSession();
+      });
   }, [router]);
 
   return (

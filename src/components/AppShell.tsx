@@ -10,10 +10,10 @@ import {
   refreshSession,
   Session,
   signOut,
-} from "../lib/yduck-client";
+} from "@/services/yduckApiClient";
 
 const guestTabs = [
-  { href: "/home", label: "Home" },
+  { href: "/overall-match-history", label: "Overall Match History" },
   { href: "/players", label: "List Player" },
 ];
 
@@ -91,9 +91,9 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
             <h1 className="text-3xl font-bold">Quack?</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="rounded-md border border-[#c09a00] bg-white/55 px-3 py-2 text-sm font-semibold">
-              {session.role === "admin" ? "Admin" : "Enhanced guest"}
-            </span>
+            {session.role === "admin" && (
+              <span className="rounded-md border border-[#c09a00] bg-white/55 px-3 py-2 text-sm font-semibold">Admin</span>
+            )}
             <button
               className="h-10 rounded-md border border-[#8b7000] bg-white px-3 text-sm font-semibold hover:bg-[#fff8d4]"
               type="button"
