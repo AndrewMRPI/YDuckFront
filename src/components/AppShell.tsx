@@ -14,6 +14,7 @@ import {
 
 const guestTabs = [
   { href: "/overall-match-history", label: "Overall Match History" },
+  { href: "/leaderboard", label: "Leaderboard" },
 ];
 
 export function AppShell({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {

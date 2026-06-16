@@ -48,8 +48,16 @@ Prefer this shape unless the app design changes:
 - Do not deploy to Vercel unless explicitly asked.
 - Run `npm run lint`, `npx tsc --noEmit`, and `npm run build` before committing
   deployable code changes.
+- In the Codex sandbox, `npm run build` can fail before type checking with a
+  Turbopack panic mentioning `globals.css`, `creating new process`,
+  `binding to a port`, and `Operation not permitted`. This is a sandbox
+  permission issue, not an app code issue. Rerun the same build with escalated
+  permissions to verify production compilation.
 - Prefer small, focused commits with a clear purpose.
 - Preserve the existing GitHub remote and repo history unless the user explicitly asks to change them.
+- Add concise comments to code you generate when the intent or calculation is
+  not obvious from local names and structure. Keep comments useful rather than
+  narrating routine assignments.
 
 ## Commit Messages
 
