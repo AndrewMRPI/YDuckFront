@@ -17,6 +17,8 @@ const guestTabs = [
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
+const adminTabs = [{ href: "/admin/match-history", label: "Modify Match History" }];
+
 export function AppShell({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -72,17 +74,19 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
     );
   }
 
+  const isAdmin = session.role === "admin";
+
   return (
     <main className="min-h-screen bg-[#f7f2df] text-[#1f2720]">
-      <header className="border-b border-[#ddce8c] bg-[#ffd84d]">
+      <header className={`border-b ${isAdmin ? "border-[#b64a3f] bg-[#e2b92f]" : "border-[#ddce8c] bg-[#ffd84d]"}`}>
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-[#5f4c00]">Yellow Ducky Corp</p>
             <h1 className="text-3xl font-bold">Quack?</h1>
           </div>
           <div className="flex items-center gap-3">
-            {session.role === "admin" && (
-              <span className="rounded-md border border-[#c09a00] bg-white/55 px-3 py-2 text-sm font-semibold">Admin</span>
+            {isAdmin && (
+              <span className="rounded-md border border-[#9d2f28] bg-[#fff3f0] px-3 py-2 text-sm font-semibold text-[#8a261f]">Admin</span>
             )}
             <button
               className="h-10 rounded-md border border-[#8b7000] bg-white px-3 text-sm font-semibold hover:bg-[#fff8d4]"
@@ -109,6 +113,24 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
             );
           })}
         </nav>
+        {isAdmin && (
+          <nav className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-5 pb-4">
+            {adminTabs.map((tab) => {
+              const active = pathname === tab.href;
+              return (
+                <Link
+                  className={`h-10 shrink-0 rounded-md px-4 py-2 text-sm font-semibold ${
+                    active ? "bg-[#8a261f] text-white" : "bg-[#fff3f0] text-[#8a261f] hover:bg-white"
+                  }`}
+                  href={tab.href}
+                  key={tab.href}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </header>
       <div className="mx-auto max-w-6xl px-5 py-7">{children}</div>
     </main>
