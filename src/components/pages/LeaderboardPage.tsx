@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { CachedYduckData, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { calculateGamePoints } from "@/scoring/gamePoints";
 
-type LeaderboardStatus = "active" | "provisional" | "inactive";
+type LeaderboardStatus = "active" | "provisional";
 
 type LeaderboardRow = {
   playerId: string;
@@ -32,10 +32,7 @@ function statusLabel(row: LeaderboardRow) {
   if (row.status === "active") {
     return "Gamer";
   }
-  if (row.status === "provisional") {
-    return "Provisional";
-  }
-  return "Inactive";
+  return "Provisional";
 }
 
 function subtractMonths(date: Date, months: number) {
@@ -109,9 +106,8 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   });
 
   const withStats: LeaderboardRow[] = Array.from(rows.values()).map((row) => {
-    const status: LeaderboardStatus =
-      row.activeGames >= activeGameMinimum ? "active" : row.activeGames > 0 ? "provisional" : "inactive";
-    const score = status === "inactive" ? row.totalScore : row.activeScore;
+    const status: LeaderboardStatus = row.activeGames >= activeGameMinimum ? "active" : "provisional";
+    const score = row.activeScore;
 
     return {
       ...row,
@@ -121,7 +117,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     };
   });
 
-  // Only active players receive official ranks; provisional and inactive rows stay visible.
+  // Only active players receive official ranks; provisional rows stay visible.
   const activeRows = withStats
     .filter((row) => row.status === "active")
     .sort((a, b) => b.activeScore - a.activeScore || b.totalScore - a.totalScore || a.playerName.localeCompare(b.playerName));
@@ -131,10 +127,10 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   });
 
   return withStats.sort((a, b) => {
-    const statusOrder = { active: 0, provisional: 1, inactive: 2 };
+    const statusOrder = { active: 0, provisional: 1 };
     return (
       statusOrder[a.status] - statusOrder[b.status] ||
-      (b.status === "inactive" ? b.totalScore - a.totalScore : b.activeScore - a.activeScore) ||
+      b.activeScore - a.activeScore ||
       b.totalGames - a.totalGames ||
       a.playerName.localeCompare(b.playerName)
     );
@@ -188,7 +184,7 @@ export default function LeaderboardPage() {
         {!loading && !error && rows.length === 0 && <p className="text-sm text-[#697061]">No players yet.</p>}
         {!loading && !error && rows.length > 0 && !hasActiveRows && (
           <p className="rounded-md border border-[#ded2a3] bg-white p-3 text-sm text-[#697061]">
-            No players have 3 games in the active window yet. Scores below are provisional or historical.
+            No players have 3 games in the active window yet. Scores below are provisional.
           </p>
         )}
 

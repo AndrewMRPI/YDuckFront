@@ -144,6 +144,11 @@ export async function loadMatch(id: string) {
   return response.match;
 }
 
+export async function loadMatchesByPlayer(playerId: string) {
+  const response = await apiRequest<ListMatchesResponse>(`/api/matches?playerId=${encodeURIComponent(playerId)}`);
+  return response.matches || [];
+}
+
 export async function signOut() {
   const session = await apiRequest<Session>("/auth/sign-out", { method: "POST" });
   clearSession();
