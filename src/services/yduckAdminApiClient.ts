@@ -25,3 +25,11 @@ export async function addMatch(request: AddMatchRequest) {
   });
   return response.match;
 }
+
+export async function editMatch(id: string, request: AddMatchRequest) {
+  const response = await apiRequest<MatchResponse>(`/api/matches/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  });
+  return response.match;
+}
