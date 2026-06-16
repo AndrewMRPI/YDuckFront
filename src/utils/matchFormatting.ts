@@ -6,6 +6,25 @@ export function niceDate(value?: string) {
   return Number.isNaN(date.getTime()) ? "No date" : date.toLocaleString();
 }
 
+export function roundedHourDate(value?: string) {
+  if (!value) {
+    return "No date";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "No date";
+  }
+
+  date.setMinutes(0, 0, 0);
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function durationLabel(seconds: number) {
   const minutes = Math.round(seconds / 60);
   return minutes > 0 ? `${minutes} min` : `${seconds} sec`;

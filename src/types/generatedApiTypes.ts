@@ -39,7 +39,7 @@ export type ApiSchemas = {
     "id": string;
     "players": ApiSchemas["MatchPlayerResult"][];
     "durationSeconds": number;
-    "gameTime"?: string | null;
+    "gameTime": string;
     "notes"?: string | null;
     "createdAt": string;
     "updatedAt": string;
@@ -47,7 +47,7 @@ export type ApiSchemas = {
   "AddMatchRequest": {
     "players": ApiSchemas["AddMatchPlayerRequest"][];
     "durationSeconds": number;
-    "gameTime"?: string | null;
+    "gameTime": string;
     "notes"?: string | null;
   };
   "MatchResponse": {

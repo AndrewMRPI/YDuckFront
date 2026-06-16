@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import {
   clearSession,
   fallbackSession,
@@ -14,12 +14,6 @@ import {
 
 const guestTabs = [
   { href: "/overall-match-history", label: "Overall Match History" },
-  { href: "/players", label: "List Player" },
-];
-
-const adminTabs = [
-  { href: "/admin/matches/new", label: "Add Match" },
-  { href: "/admin/users/new", label: "Add User" },
 ];
 
 export function AppShell({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
@@ -64,11 +58,6 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
     };
   }, [requireAdmin, router]);
 
-  const tabs = useMemo(
-    () => (session.role === "admin" ? [...guestTabs, ...adminTabs] : guestTabs),
-    [session.role],
-  );
-
   async function handleSignOut() {
     await signOut().catch(() => undefined);
     router.replace("/");
@@ -104,7 +93,7 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
           </div>
         </div>
         <nav className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-5 pb-4">
-          {tabs.map((tab) => {
+          {guestTabs.map((tab) => {
             const active = pathname === tab.href;
             return (
               <Link

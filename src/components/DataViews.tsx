@@ -1,16 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import {
-  apiRequest,
-  CachedYduckData,
-  clearCachedData,
-  loadYduckData,
-  Match,
-  Player,
-  readStoredSession,
-} from "@/services/yduckApiClient";
-import { durationLabel, niceDate } from "@/utils/matchFormatting";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { CachedYduckData, loadYduckData, Match } from "@/services/yduckApiClient";
+import { durationLabel, roundedHourDate } from "@/utils/matchFormatting";
 
 function useYduckData() {
   const [data, setData] = useState<CachedYduckData | null>(null);
@@ -34,17 +27,14 @@ function useYduckData() {
     reload();
   }, []);
 
-  return { data, error, loading, reload };
+  return { data, error, loading };
 }
 
 export function MatchList() {
-  const { data, error, loading, reload } = useYduckData();
-  const isAdmin = readStoredSession().role === "admin";
+  const { data, error, loading } = useYduckData();
 
-  async function deleteMatch(id: string) {
-    await apiRequest<void>(`/api/matches/${id}`, { method: "DELETE" });
-    clearCachedData();
-    await reload(true);
+  function playerHref(player: Match["players"][number]) {
+    return `/player/${encodeURIComponent(player.playerId)}`;
   }
 
   return (
@@ -60,19 +50,8 @@ export function MatchList() {
             <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm" key={match.id}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-[#697061]">{niceDate(match.gameTime || match.createdAt)}</p>
-                  <h3 className="text-xl font-bold">{durationLabel(match.durationSeconds)}</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {isAdmin && (
-                    <button
-                      className="rounded-md border border-[#c98a80] px-3 py-1 text-sm font-semibold text-[#8a261f] hover:bg-[#fff3f0]"
-                      type="button"
-                      onClick={() => deleteMatch(match.id)}
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <p className="text-sm font-semibold text-[#697061]">Duration {durationLabel(match.durationSeconds)}</p>
+                  <h3 className="text-xl font-bold">{roundedHourDate(match.gameTime)}</h3>
                 </div>
               </div>
               <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -81,7 +60,10 @@ export function MatchList() {
                   .map((player) => (
                     <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
                       <p className="font-semibold">
-                        {player.place}. {player.playerName || player.playerId}
+                        {player.place}.{" "}
+                        <Link className="underline decoration-[#b9aa70] underline-offset-4 hover:text-[#5f4c00]" href={playerHref(player)}>
+                          {player.playerName || player.playerId}
+                        </Link>
                       </p>
                       <p className="text-sm text-[#697061]">Score {player.score}</p>
                     </div>
@@ -93,202 +75,6 @@ export function MatchList() {
         })}
       </div>
       {!loading && data?.matches.length === 0 && <p className="text-sm text-[#697061]">No matches yet.</p>}
-    </section>
-  );
-}
-
-export function PlayerList() {
-  const { data, error, loading, reload } = useYduckData();
-  const isAdmin = readStoredSession().role === "admin";
-
-  async function deletePlayer(id: string) {
-    await apiRequest<void>(`/api/players/${id}`, { method: "DELETE" });
-    clearCachedData();
-    await reload(true);
-  }
-
-  return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold">List Player</h2>
-      </div>
-      {loading && <p className="text-sm text-[#697061]">Loading players...</p>}
-      {error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{error}</p>}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {data?.players.map((player) => (
-          <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm" key={player.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-bold">{player.name}</h3>
-                <p className="break-all text-sm text-[#697061]">{player.id}</p>
-              </div>
-              {isAdmin && (
-                <button
-                  className="rounded-md border border-[#c98a80] px-3 py-1 text-sm font-semibold text-[#8a261f] hover:bg-[#fff3f0]"
-                  type="button"
-                  onClick={() => deletePlayer(player.id)}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
-      {!loading && data?.players.length === 0 && <p className="text-sm text-[#697061]">No players yet.</p>}
-    </section>
-  );
-}
-
-export function AddUserForm() {
-  const [name, setName] = useState("");
-  const [status, setStatus] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("Saving...");
-    try {
-      await apiRequest<{ player: Player }>("/api/players", {
-        method: "POST",
-        body: JSON.stringify({ name }),
-      });
-      clearCachedData();
-      setName("");
-      setStatus("User added.");
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Unable to add user.");
-    }
-  }
-
-  return (
-    <section className="max-w-xl space-y-4">
-      <h2 className="text-2xl font-bold">Add User</h2>
-      <form className="space-y-3" onSubmit={submit}>
-        <input
-          className="h-12 w-full rounded-md border border-[#b9aa70] bg-white px-4 outline-none focus:border-[#1f2720]"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <button
-          className="h-11 rounded-md bg-[#1f2720] px-4 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!name.trim()}
-          type="submit"
-        >
-          Add
-        </button>
-      </form>
-      {status && <p className="text-sm text-[#555d52]">{status}</p>}
-    </section>
-  );
-}
-
-export function AddMatchForm() {
-  const { data, error, loading } = useYduckData();
-  const [durationMinutes, setDurationMinutes] = useState("30");
-  const [gameTime, setGameTime] = useState("");
-  const [notes, setNotes] = useState("");
-  const [rows, setRows] = useState([
-    { playerId: "", score: "0", place: "1" },
-    { playerId: "", score: "0", place: "2" },
-    { playerId: "", score: "0", place: "3" },
-    { playerId: "", score: "0", place: "4" },
-  ]);
-  const [status, setStatus] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("Saving...");
-    try {
-      await apiRequest<{ match: Match }>("/api/matches", {
-        method: "POST",
-        body: JSON.stringify({
-          players: rows.map((row) => ({
-            playerId: row.playerId,
-            score: Number(row.score),
-            place: Number(row.place),
-          })),
-          durationSeconds: Number(durationMinutes) * 60,
-          gameTime: gameTime ? new Date(gameTime).toISOString() : undefined,
-          notes,
-        }),
-      });
-      clearCachedData();
-      setStatus("Match added.");
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Unable to add match.");
-    }
-  }
-
-  function updateRow(index: number, field: "playerId" | "score" | "place", value: string) {
-    setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)));
-  }
-
-  return (
-    <section className="max-w-3xl space-y-4">
-      <h2 className="text-2xl font-bold">Add Match</h2>
-      {loading && <p className="text-sm text-[#697061]">Loading players...</p>}
-      {error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{error}</p>}
-      <form className="space-y-4" onSubmit={submit}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            className="h-12 rounded-md border border-[#b9aa70] bg-white px-4 outline-none focus:border-[#1f2720]"
-            min="1"
-            type="number"
-            value={durationMinutes}
-            onChange={(event) => setDurationMinutes(event.target.value)}
-          />
-          <input
-            className="h-12 rounded-md border border-[#b9aa70] bg-white px-4 outline-none focus:border-[#1f2720]"
-            type="datetime-local"
-            value={gameTime}
-            onChange={(event) => setGameTime(event.target.value)}
-          />
-        </div>
-        <div className="grid gap-3">
-          {rows.map((row, index) => (
-            <div className="grid gap-3 rounded-lg border border-[#ded2a3] bg-white p-3 sm:grid-cols-[1fr_110px_110px]" key={index}>
-              <select
-                className="h-11 rounded-md border border-[#b9aa70] bg-white px-3 outline-none focus:border-[#1f2720]"
-                value={row.playerId}
-                onChange={(event) => updateRow(index, "playerId", event.target.value)}
-              >
-                <option value=""></option>
-                {data?.players.map((player) => (
-                  <option key={player.id} value={player.id}>
-                    {player.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="h-11 rounded-md border border-[#b9aa70] bg-white px-3 outline-none focus:border-[#1f2720]"
-                type="number"
-                value={row.score}
-                onChange={(event) => updateRow(index, "score", event.target.value)}
-              />
-              <select
-                className="h-11 rounded-md border border-[#b9aa70] bg-white px-3 outline-none focus:border-[#1f2720]"
-                value={row.place}
-                onChange={(event) => updateRow(index, "place", event.target.value)}
-              >
-                {[1, 2, 3, 4].map((place) => (
-                  <option key={place} value={place}>
-                    {place}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
-        <textarea
-          className="min-h-28 w-full rounded-md border border-[#b9aa70] bg-white px-4 py-3 outline-none focus:border-[#1f2720]"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-        <button className="h-11 rounded-md bg-[#1f2720] px-4 font-semibold text-white" type="submit">
-          Add
-        </button>
-      </form>
-      {status && <p className="text-sm text-[#555d52]">{status}</p>}
     </section>
   );
 }
