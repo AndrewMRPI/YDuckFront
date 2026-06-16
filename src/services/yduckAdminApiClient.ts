@@ -1,6 +1,6 @@
 "use client";
 
-import { apiRequest, PlayerResponse } from "@/services/yduckApiClient";
+import { AddMatchRequest, apiRequest, MatchResponse, PlayerResponse } from "@/services/yduckApiClient";
 
 export async function deleteMatch(id: string) {
   await apiRequest<void>(`/api/matches/${encodeURIComponent(id)}`, { method: "DELETE" });
@@ -16,4 +16,12 @@ export async function addPlayer(name: string) {
 
 export async function deletePlayer(id: string) {
   await apiRequest<void>(`/api/players/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function addMatch(request: AddMatchRequest) {
+  const response = await apiRequest<MatchResponse>("/api/matches", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+  return response.match;
 }

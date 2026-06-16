@@ -20,6 +20,7 @@ const guestTabs = [
 const adminTabs = [
   { href: "/admin/match-history", label: "Modify Match History" },
   { href: "/admin/players", label: "Modify Players" },
+  { href: "/admin/matches/new", label: "Add Match" },
 ];
 
 export function AppShell({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {

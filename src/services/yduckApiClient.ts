@@ -10,6 +10,7 @@ export type ListMatchesResponse = ApiSchemas["ListMatchesResponse"];
 export type ListPlayersResponse = ApiSchemas["ListPlayersResponse"];
 export type MatchResponse = ApiSchemas["MatchResponse"];
 export type PlayerResponse = ApiSchemas["PlayerResponse"];
+export type AddMatchRequest = ApiSchemas["AddMatchRequest"];
 
 export type YduckData = {
   matches: Match[];
