@@ -93,6 +93,11 @@ export async function loadYduckData(): Promise<YduckData> {
   };
 }
 
+export async function loadPlayers() {
+  const response = await apiRequest<ListPlayersResponse>("/api/players");
+  return response.players || [];
+}
+
 export async function loadMatch(id: string) {
   const response = await apiRequest<MatchResponse>(`/api/matches/${encodeURIComponent(id)}`);
   return response.match;

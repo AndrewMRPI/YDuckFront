@@ -17,7 +17,10 @@ const guestTabs = [
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
-const adminTabs = [{ href: "/admin/match-history", label: "Modify Match History" }];
+const adminTabs = [
+  { href: "/admin/match-history", label: "Modify Match History" },
+  { href: "/admin/players", label: "Modify Players" },
+];
 
 export function AppShell({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
   const pathname = usePathname();
