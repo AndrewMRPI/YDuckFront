@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiRequest, clearSession, loadYduckData, refreshSession, Session, storeSession } from "@/services/yduckApiClient";
+import { apiRequest, clearSession, debugLog, loadYduckData, refreshSession, Session, storeSession } from "@/services/yduckApiClient";
 
 export default function SignOnPage() {
   const router = useRouter();
@@ -13,8 +13,22 @@ export default function SignOnPage() {
   const [busy, setBusy] = useState(false);
 
   async function finishSignIn(session: Session) {
+    debugLog("sign_in:accepted", { authenticated: session.authenticated, role: session.role });
+    await apiRequest<Session>("/auth/session")
+      .then((confirmed) => {
+        debugLog("sign_in:cookie_session_check", { authenticated: confirmed.authenticated, role: confirmed.role });
+      })
+      .catch((error) => {
+        debugLog("sign_in:cookie_session_check_failed", { error: error instanceof Error ? error.message : String(error) });
+      });
     storeSession(session);
-    await loadYduckData().catch(() => undefined);
+    await loadYduckData()
+      .then(() => {
+        debugLog("sign_in:data_preload_success");
+      })
+      .catch((error) => {
+        debugLog("sign_in:data_preload_failed", { error: error instanceof Error ? error.message : String(error) });
+      });
     router.replace("/overall-match-history");
   }
 
@@ -29,12 +43,15 @@ export default function SignOnPage() {
     setBusy(true);
     setStatus("");
     try {
+      debugLog("sign_in:submit", { mode: "guest", passwordLength: password.length });
+      clearSession();
       const session = await apiRequest<Session>("/auth/sign-in", {
         method: "POST",
         body: JSON.stringify({ password }),
       });
       await finishSignIn(session);
-    } catch {
+    } catch (error) {
+      debugLog("sign_in:failed", { mode: "guest", error: error instanceof Error ? error.message : String(error) });
       setStatus("No");
     } finally {
       setBusy(false);
@@ -46,12 +63,15 @@ export default function SignOnPage() {
     setBusy(true);
     setStatus("");
     try {
+      debugLog("sign_in:submit", { mode: "admin", passwordLength: adminPassword.length });
+      clearSession();
       const session = await apiRequest<Session>("/auth/admin/sign-in", {
         method: "POST",
         body: JSON.stringify({ password: adminPassword }),
       });
       await finishSignIn(session);
-    } catch {
+    } catch (error) {
+      debugLog("sign_in:failed", { mode: "admin", error: error instanceof Error ? error.message : String(error) });
       setStatus("No");
     } finally {
       setBusy(false);
@@ -61,11 +81,13 @@ export default function SignOnPage() {
   useEffect(() => {
     refreshSession()
       .then((session) => {
+        debugLog("sign_in:initial_session", { authenticated: session.authenticated, role: session.role });
         if (session.authenticated) {
           router.replace("/overall-match-history");
         }
       })
-      .catch(() => {
+      .catch((error) => {
+        debugLog("sign_in:initial_session_failed", { error: error instanceof Error ? error.message : String(error) });
         clearSession();
       });
   }, [router]);

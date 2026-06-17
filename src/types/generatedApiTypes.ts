@@ -8,6 +8,7 @@ export type ApiSchemas = {
   "SessionResponse": {
     "authenticated": boolean;
     "role": "public_guest" | "enhanced_guest" | "admin";
+    "sessionToken"?: string;
   };
   "Player": {
     "id": string;

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import {
   clearSession,
+  debugLog,
   fallbackSession,
   readStoredSession,
   refreshSession,
@@ -34,7 +35,14 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
     Promise.resolve()
       .then(() => {
         const stored = readStoredSession();
+        debugLog("app_shell:stored_session", {
+          authenticated: stored.authenticated,
+          role: stored.role,
+          requireAdmin,
+          pathname,
+        });
         if (!stored.authenticated || (requireAdmin && stored.role !== "admin")) {
+          debugLog("app_shell:redirect_home", { reason: "stored_session_missing_or_wrong_role", requireAdmin, pathname });
           clearSession();
           router.replace("/");
           return null;
@@ -45,7 +53,14 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
         if (!alive || !fresh) {
           return;
         }
+        debugLog("app_shell:fresh_session", {
+          authenticated: fresh.authenticated,
+          role: fresh.role,
+          requireAdmin,
+          pathname,
+        });
         if (!fresh.authenticated || (requireAdmin && fresh.role !== "admin")) {
+          debugLog("app_shell:redirect_home", { reason: "fresh_session_missing_or_wrong_role", requireAdmin, pathname });
           clearSession();
           router.replace("/");
           return;
@@ -53,8 +68,13 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
         setSession(fresh);
         setChecking(false);
       })
-      .catch(() => {
+      .catch((error) => {
         if (alive) {
+          debugLog("app_shell:session_check_failed", {
+            error: error instanceof Error ? error.message : String(error),
+            requireAdmin,
+            pathname,
+          });
           clearSession();
           router.replace("/");
         }
@@ -63,9 +83,10 @@ export function AppShell({ children, requireAdmin = false }: { children: ReactNo
     return () => {
       alive = false;
     };
-  }, [requireAdmin, router]);
+  }, [pathname, requireAdmin, router]);
 
   async function handleSignOut() {
+    debugLog("sign_out:submit", { pathname });
     await signOut().catch(() => undefined);
     router.replace("/");
   }
