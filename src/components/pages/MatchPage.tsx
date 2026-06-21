@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { calculateGamePointBreakdowns, GamePointBreakdown } from "@/scoring/gamePoints";
 import { loadMatch, Match } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate, roundedHourDate } from "@/utils/matchFormatting";
-import { seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+import { placedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 type MatchPageProps = {
   id: string;
@@ -70,7 +70,7 @@ export default function MatchPage({ id }: MatchPageProps) {
     };
   }, [id]);
 
-  const players = useMemo(() => (match ? seatedMatchPlayers(match) : []), [match]);
+  const players = useMemo(() => (match ? placedMatchPlayers(match) : []), [match]);
   const normalPointsByPlayer = useMemo(() => {
     return new Map((match ? calculateGamePointBreakdowns(match, "normal") : []).map((result) => [result.playerId, result]));
   }, [match]);
@@ -107,10 +107,11 @@ export default function MatchPage({ id }: MatchPageProps) {
                 return (
                   <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
                     <p className="font-semibold">
-                      {placementLabel(player.effectivePlace)} - {seatLabel(player.seatIndex)}{" "}
+                      {placementLabel(player.effectivePlace)} -{" "}
                       <Link className="underline decoration-[#b9aa70] underline-offset-4 hover:text-[#5f4c00]" href={playerHref(player)}>
                         {player.playerName || player.playerId}
-                      </Link>
+                      </Link>{" "}
+                      - {seatLabel(player.seatIndex)}
                     </p>
                     <p className="text-sm text-[#697061]">Score {player.score}</p>
                     <div className="mt-2 grid gap-1">

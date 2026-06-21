@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { Match, YduckData } from "@/services/yduckApiClient";
 import { gameTypeLabel, roundedHourDate } from "@/utils/matchFormatting";
-import { seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
+import { placedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
 
 type MatchHistoryViewProps = {
   data: YduckData | null;
@@ -53,13 +53,14 @@ export function MatchHistoryView({ data, error, loading, action, actionError }: 
               {action?.(match)}
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {seatedMatchPlayers(match).map((player) => (
+              {placedMatchPlayers(match).map((player) => (
                 <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
                   <p className="font-semibold">
-                    {placementLabel(player.effectivePlace)} - {seatLabel(player.seatIndex)}{" "}
+                    {placementLabel(player.effectivePlace)} -{" "}
                     <Link className="underline decoration-[#b9aa70] underline-offset-4 hover:text-[#5f4c00]" href={playerHref(player)}>
                       {player.playerName || player.playerId}
-                    </Link>
+                    </Link>{" "}
+                    - {seatLabel(player.seatIndex)}
                   </p>
                   <p className="text-sm text-[#697061]">Score {player.score}</p>
                 </div>

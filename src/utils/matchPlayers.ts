@@ -26,3 +26,12 @@ export function seatedMatchPlayers(match: Match): RankedMatchPlayer[] {
     seatIndex,
   }));
 }
+
+export function placedMatchPlayers(match: Match): RankedMatchPlayer[] {
+  return [...seatedMatchPlayers(match)].sort(
+    (a, b) =>
+      a.effectivePlace - b.effectivePlace ||
+      (a.playerName || a.playerId).localeCompare(b.playerName || b.playerId) ||
+      a.seatIndex - b.seatIndex,
+  );
+}

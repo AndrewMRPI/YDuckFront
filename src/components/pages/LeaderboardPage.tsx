@@ -97,6 +97,10 @@ function placementLabel(place: number) {
   return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
 }
 
+function gameTypeInitial(value?: string) {
+  return value?.trim().toLowerCase() === "south" ? "S" : "E";
+}
+
 function subtractMonths(date: Date, months: number) {
   const next = new Date(date);
   next.setMonth(next.getMonth() - months);
@@ -227,6 +231,7 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
   const router = useRouter();
   const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
   const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
+  const [showGameTypeLabels, setShowGameTypeLabels] = useState(false);
   const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => matchSortValue(a) - matchSortValue(b) || a.id.localeCompare(b.id)),
@@ -408,6 +413,15 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
               Hide all
             </button>
           </div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-[#25291f]">
+            <input
+              checked={showGameTypeLabels}
+              className="h-4 w-4 accent-[#1f2720]"
+              onChange={(event) => setShowGameTypeLabels(event.target.checked)}
+              type="checkbox"
+            />
+            Show East/South labels
+          </label>
         </div>
       </div>
 
@@ -466,6 +480,20 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
               {matchIndex === sortedMatches.length - 1 ? "Latest" : `Match ${matchIndex + 1}`}
             </text>
           ))}
+          {showGameTypeLabels &&
+            sortedMatches.map((match, matchIndex) => (
+              <text
+                fill="#25291f"
+                fontSize="11"
+                fontWeight="700"
+                key={`game-type-label-${match.id}`}
+                textAnchor="middle"
+                x={scale.xForMatch(matchIndex)}
+                y={chartPadding.top + 4}
+              >
+                {gameTypeInitial(match.gameType)}
+              </text>
+            ))}
           {series.map((playerSeries) => {
             const isHidden = hiddenPlayerIds.has(playerSeries.player.playerId);
             return (
@@ -510,24 +538,18 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
                     }
 
                     return (
-                      <circle
+                      <g
                         aria-label={`${playerSeries.player.playerName}, ${leaderboardScoreText(point.totalScore, scoringMode)} after ${niceDate(
                           point.match.gameTime,
-                        )}`}
+                        )}, ${gameTypeLabel(point.match.gameType)}`}
                         className="cursor-pointer outline-none"
-                        cx={point.x}
-                        cy={point.y}
-                        fill="#fffdf3"
                         key={`${playerSeries.player.playerId}-${point.match.id}`}
                         onBlur={() => setHoverPoint(null)}
                         onClick={() => router.push(matchHref(point.match))}
                         onFocus={() => setHoverPoint({ player: playerSeries.player, point })}
                         onMouseEnter={() => setHoverPoint({ player: playerSeries.player, point })}
                         onMouseLeave={() => setHoverPoint(null)}
-                        r="5"
                         role="button"
-                        stroke={playerSeries.player.color}
-                        strokeWidth="2"
                         tabIndex={0}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
@@ -535,7 +557,9 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
                             router.push(matchHref(point.match));
                           }
                         }}
-                      />
+                      >
+                        <circle cx={point.x} cy={point.y} fill="#fffdf3" r="5" stroke={playerSeries.player.color} strokeWidth="2" />
+                      </g>
                     );
                   })}
               </g>
