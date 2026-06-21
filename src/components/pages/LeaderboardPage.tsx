@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { loadYduckData, Match, Player, YduckData } from "@/services/yduckApiClient";
-import { calculateGamePoints } from "@/scoring/gamePoints";
+import { calculateGamePoints, leaderboardScoreBaseline, scoringModes, ScoringMode } from "@/scoring/gamePoints";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
 import { rankedMatchPlayers } from "@/utils/matchPlayers";
 
@@ -66,6 +66,14 @@ function signedNumber(value: number) {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
+function scoreNumber(value: number) {
+  return `${value}`;
+}
+
+function leaderboardScoreText(value: number, scoringMode: ScoringMode) {
+  return scoringMode === "normal" ? signedNumber(value) : scoreNumber(value);
+}
+
 function averageScore(row: LeaderboardRow) {
   if (row.totalGames === 0) {
     return "-";
@@ -107,8 +115,9 @@ function placePercent(placeCount: number, totalGames: number) {
   return `${Math.round((placeCount / totalGames) * 100)}%`;
 }
 
-function calculateLeaderboardRows(matches: Match[], players: Player[], now = new Date()): LeaderboardRow[] {
+function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMode: ScoringMode, now = new Date()): LeaderboardRow[] {
   const playersById = new Map(players.map((player) => [player.id, player]));
+  const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const windowStart = subtractMonths(now, activeWindowMonths);
   const rows = new Map<
     string,
@@ -143,7 +152,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   matches.forEach((match) => {
     const matchTime = new Date(match.gameTime);
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
-    const gamePointsByPlayer = new Map(calculateGamePoints(match).map((result) => [result.playerId, result.gamePoints]));
+    const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
 
     rankedMatchPlayers(match).forEach((player) => {
       const row = ensureRow(player.playerId, player.playerName);
@@ -161,7 +170,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
 
   const withStats: LeaderboardRow[] = Array.from(rows.values()).map((row) => {
     const status: LeaderboardStatus = row.activeGames >= activeGameMinimum ? "active" : "provisional";
-    const score = row.totalScore;
+    const score = scoreBaseline + row.totalScore;
 
     return {
       ...row,
@@ -214,10 +223,11 @@ function matchSortValue(match: Match) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: LeaderboardRow[] }) {
+function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; rows: LeaderboardRow[]; scoringMode: ScoringMode }) {
   const router = useRouter();
   const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
   const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
+  const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => matchSortValue(a) - matchSortValue(b) || a.id.localeCompare(b.id)),
     [matches],
@@ -239,14 +249,14 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
   const playerById = useMemo(() => new Map(chartPlayers.map((player) => [player.playerId, player])), [chartPlayers]);
   const scale = useMemo(() => {
     const totals = new Map<string, number>();
-    const values = [0];
+    const values = [scoreBaseline];
 
     sortedMatches.forEach((match) => {
-      calculateGamePoints(match).forEach((result) => {
+      calculateGamePoints(match, scoringMode).forEach((result) => {
         if (!playerById.has(result.playerId)) {
           return;
         }
-        const nextTotal = (totals.get(result.playerId) || 0) + result.gamePoints;
+        const nextTotal = (totals.get(result.playerId) ?? scoreBaseline) + result.gamePoints;
         totals.set(result.playerId, nextTotal);
         values.push(nextTotal);
       });
@@ -267,7 +277,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
       chartPadding.top + ((maxTick - score) / Math.max(1, maxTick - minTick)) * plotHeight;
 
     return { maxTick, minTick, ticks, xForMatch, yForScore };
-  }, [playerById, sortedMatches]);
+  }, [playerById, scoreBaseline, scoringMode, sortedMatches]);
   const series = useMemo<ChartSeries[]>(() => {
     const totals = new Map<string, number>();
     const nextSeries = new Map<string, ChartSeries>();
@@ -282,7 +292,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
     });
 
     sortedMatches.forEach((match, matchIndex) => {
-      const gamePointsByPlayer = new Map(calculateGamePoints(match).map((result) => [result.playerId, result.gamePoints]));
+      const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
       const placeByPlayer = new Map(rankedMatchPlayers(match).map((player) => [player.playerId, player.effectivePlace]));
 
       chartPlayers.forEach((player) => {
@@ -296,7 +306,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
         const gamePoints = gamePointsByPlayer.get(player.playerId);
 
         if (typeof gamePoints === "number") {
-          const totalScore = (totals.get(player.playerId) || 0) + gamePoints;
+          const totalScore = (totals.get(player.playerId) ?? scoreBaseline) + gamePoints;
           totals.set(player.playerId, totalScore);
           const nextPoint = {
             gamePoints,
@@ -336,7 +346,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
     });
 
     return Array.from(nextSeries.values()).filter((playerSeries) => playerSeries.points.length > 0);
-  }, [chartPlayers, scale, sortedMatches]);
+  }, [chartPlayers, scale, scoreBaseline, scoringMode, sortedMatches]);
   const xLabels = useMemo(() => {
     if (sortedMatches.length === 0) {
       return [];
@@ -425,7 +435,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
                   y2={y}
                 />
                 <text fill="#697061" fontSize="12" textAnchor="end" x={chartPadding.left - 10} y={y + 4}>
-                  {signedNumber(tick)}
+                  {leaderboardScoreText(tick, scoringMode)}
                 </text>
               </g>
             );
@@ -501,7 +511,9 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
 
                     return (
                       <circle
-                        aria-label={`${playerSeries.player.playerName}, ${signedNumber(point.totalScore)} after ${niceDate(point.match.gameTime)}`}
+                        aria-label={`${playerSeries.player.playerName}, ${leaderboardScoreText(point.totalScore, scoringMode)} after ${niceDate(
+                          point.match.gameTime,
+                        )}`}
                         className="cursor-pointer outline-none"
                         cx={point.x}
                         cy={point.y}
@@ -546,7 +558,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
             <p className="text-[#697061]">
               {placementLabel(hoverPoint.point.place)} place, {signedNumber(hoverPoint.point.gamePoints)}
             </p>
-            <p className="font-semibold text-[#25291f]">Score after {signedNumber(hoverPoint.point.totalScore)}</p>
+            <p className="font-semibold text-[#25291f]">Score after {leaderboardScoreText(hoverPoint.point.totalScore, scoringMode)}</p>
           </div>
         )}
       </div>
@@ -572,7 +584,7 @@ function ScoreOverTimeChart({ matches, rows }: { matches: Match[]; rows: Leaderb
                 }}
               />
               <span className={isHidden ? "line-through" : ""}>
-                {player.playerName} {signedNumber(player.score)}
+                {player.playerName} {leaderboardScoreText(player.score, scoringMode)}
               </span>
             </button>
           );
@@ -586,6 +598,7 @@ export default function LeaderboardPage() {
   const [data, setData] = useState<YduckData | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [scoringMode, setScoringMode] = useState<ScoringMode>("mahjongSoul");
 
   useEffect(() => {
     let alive = true;
@@ -612,7 +625,7 @@ export default function LeaderboardPage() {
     };
   }, []);
 
-  const rows = useMemo(() => calculateLeaderboardRows(data?.matches || [], data?.players || []), [data]);
+  const rows = useMemo(() => calculateLeaderboardRows(data?.matches || [], data?.players || [], scoringMode), [data, scoringMode]);
   const hasActiveRows = rows.some((row) => row.status === "active");
 
   return (
@@ -621,6 +634,27 @@ export default function LeaderboardPage() {
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold">Leaderboard</h2>
           <p className="text-sm text-[#697061]">Scores use total game points from all matches.</p>
+        </div>
+
+        <div className="flex flex-col gap-2 rounded-lg border border-[#ded2a3] bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+          <p className="text-sm font-semibold text-[#25291f]">Scoring mode</p>
+          <div className="flex rounded-md border border-[#ded2a3] bg-[#fffdf3] p-1">
+            {scoringModes.map((mode) => {
+              const active = scoringMode === mode.value;
+              return (
+                <button
+                  className={`h-9 rounded px-3 text-sm font-semibold ${
+                    active ? "bg-[#1f2720] text-white" : "text-[#25291f] hover:bg-[#fff8d4]"
+                  }`}
+                  key={mode.value}
+                  onClick={() => setScoringMode(mode.value)}
+                  type="button"
+                >
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {loading && <p className="text-sm text-[#697061]">Loading leaderboard...</p>}
@@ -662,7 +696,7 @@ export default function LeaderboardPage() {
                         {row.playerName}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 font-bold">{signedNumber(row.score)}</td>
+                    <td className="px-4 py-3 font-bold">{leaderboardScoreText(row.score, scoringMode)}</td>
                     <td className="px-4 py-3 font-bold">{averageScore(row)}</td>
                     <td className="px-4 py-3 text-[#697061]">{statusLabel(row)}</td>
                     <td className="px-4 py-3 text-[#697061]">{row.activeGames}</td>
@@ -678,7 +712,9 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {!loading && !error && data && rows.length > 0 && <ScoreOverTimeChart matches={data.matches} rows={rows} />}
+        {!loading && !error && data && rows.length > 0 && (
+          <ScoreOverTimeChart matches={data.matches} rows={rows} scoringMode={scoringMode} />
+        )}
       </section>
     </AppShell>
   );

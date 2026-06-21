@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { calculateGamePointBreakdowns } from "@/scoring/gamePoints";
+import { calculateGamePointBreakdowns, GamePointBreakdown } from "@/scoring/gamePoints";
 import { loadMatch, Match } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate, roundedHourDate } from "@/utils/matchFormatting";
 import { seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
@@ -22,6 +22,22 @@ function signedNumber(value: number) {
 
 function placementLabel(place: number) {
   return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
+}
+
+function calculationText(breakdown: GamePointBreakdown) {
+  const rankText = breakdown.rankPoints ? ` ${signedNumber(breakdown.rankPoints)} rank` : "";
+  const adjustmentText = breakdown.adjustment ? ` ${signedNumber(breakdown.adjustment)} adj` : "";
+  return `${signedNumber(breakdown.basePoints)} base ${signedNumber(breakdown.uma)} uma${rankText}${adjustmentText} = ${signedNumber(
+    breakdown.gamePoints,
+  )}`;
+}
+
+function calculationTitle(playerScore: number, breakdown: GamePointBreakdown) {
+  const rankText = breakdown.rankPoints ? ` ${signedNumber(breakdown.rankPoints)} rank points` : "";
+  const adjustmentText = breakdown.adjustment ? ` ${signedNumber(breakdown.adjustment)} table adjustment` : "";
+  return `roundHalfDown((${playerScore} - ${breakdown.startingPoints}) / 1000) ${signedNumber(breakdown.uma)} uma${rankText}${adjustmentText} = ${signedNumber(
+    breakdown.gamePoints,
+  )}`;
 }
 
 export default function MatchPage({ id }: MatchPageProps) {
@@ -55,17 +71,16 @@ export default function MatchPage({ id }: MatchPageProps) {
   }, [id]);
 
   const players = useMemo(() => (match ? seatedMatchPlayers(match) : []), [match]);
-  const gamePointsByPlayer = useMemo(() => {
-    return new Map((match ? calculateGamePointBreakdowns(match) : []).map((result) => [result.playerId, result]));
+  const normalPointsByPlayer = useMemo(() => {
+    return new Map((match ? calculateGamePointBreakdowns(match, "normal") : []).map((result) => [result.playerId, result]));
+  }, [match]);
+  const mahjongSoulPointsByPlayer = useMemo(() => {
+    return new Map((match ? calculateGamePointBreakdowns(match, "mahjongSoul") : []).map((result) => [result.playerId, result]));
   }, [match]);
 
   return (
     <AppShell>
       <section className="max-w-3xl space-y-4">
-        <Link className="text-sm font-semibold text-[#5f4c00] underline decoration-[#b9aa70] underline-offset-4" href="/overall-match-history">
-          Back to match history
-        </Link>
-
         {loading && <p className="text-sm text-[#697061]">Loading match...</p>}
         {error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{error}</p>}
         {!loading && !error && !match && (
@@ -86,9 +101,8 @@ export default function MatchPage({ id }: MatchPageProps) {
 
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
               {players.map((player) => {
-                const breakdown = gamePointsByPlayer.get(player.playerId);
-                const adjustmentText = breakdown?.adjustment ? ` ${signedNumber(breakdown.adjustment)} adj` : "";
-                const formulaAdjustmentText = breakdown?.adjustment ? ` ${signedNumber(breakdown.adjustment)} table adjustment` : "";
+                const normalBreakdown = normalPointsByPlayer.get(player.playerId);
+                const mahjongSoulBreakdown = mahjongSoulPointsByPlayer.get(player.playerId);
 
                 return (
                   <div className="rounded-md border border-[#eee5be] bg-[#fffdf3] p-3" key={`${match.id}-${player.playerId}`}>
@@ -99,14 +113,24 @@ export default function MatchPage({ id }: MatchPageProps) {
                       </Link>
                     </p>
                     <p className="text-sm text-[#697061]">Score {player.score}</p>
-                    {breakdown && (
-                      <p
-                        className="mt-2 text-sm font-semibold text-[#5f4c00] underline decoration-dotted decoration-[#b9aa70] underline-offset-4"
-                        title={`roundHalfDown((${player.score} - ${breakdown.startingPoints}) / 1000) ${signedNumber(breakdown.uma)}${formulaAdjustmentText} = ${signedNumber(breakdown.gamePoints)}`}
-                      >
-                        {signedNumber(breakdown.basePoints)} base {signedNumber(breakdown.uma)} uma{adjustmentText} = {signedNumber(breakdown.gamePoints)}
-                      </p>
-                    )}
+                    <div className="mt-2 grid gap-1">
+                      {normalBreakdown && (
+                        <p
+                          className="text-sm font-semibold text-[#5f4c00] underline decoration-dotted decoration-[#b9aa70] underline-offset-4"
+                          title={calculationTitle(player.score, normalBreakdown)}
+                        >
+                          Normal: {calculationText(normalBreakdown)}
+                        </p>
+                      )}
+                      {mahjongSoulBreakdown && (
+                        <p
+                          className="text-sm font-semibold text-[#2b6095] underline decoration-dotted decoration-[#9bb7d0] underline-offset-4"
+                          title={calculationTitle(player.score, mahjongSoulBreakdown)}
+                        >
+                          Mahjong Soul: {calculationText(mahjongSoulBreakdown)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 );
               })}

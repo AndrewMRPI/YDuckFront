@@ -16,6 +16,7 @@ import {
 const guestTabs = [
   { href: "/overall-match-history", label: "Overall Match History" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/scoring-explained", label: "Scoring Explained" },
 ];
 
 const adminTabs = [

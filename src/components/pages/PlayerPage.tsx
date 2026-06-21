@@ -4,7 +4,7 @@ import type { ApexOptions } from "apexcharts";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { calculateGamePoints } from "@/scoring/gamePoints";
+import { calculateGamePoints, leaderboardScoreBaseline, ScoringMode } from "@/scoring/gamePoints";
 import { loadMatchesByPlayer, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
 import { rankedMatchPlayers, seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
@@ -15,7 +15,9 @@ type PlayerPageProps = {
 
 type PlacementPoint = {
   gamePoints: number;
+  mahjongSoulGamePoints: number;
   match: Match;
+  normalGamePoints: number;
   place: number;
   score: number;
   totalScore: number;
@@ -53,6 +55,10 @@ function signedNumber(value: number) {
   return value > 0 ? `+${value}` : `${value}`;
 }
 
+function scoreNumber(value: number) {
+  return `${value}`;
+}
+
 function statusLabel(status: LeaderboardStatus) {
   if (status === "active") {
     return "Gamer";
@@ -86,8 +92,9 @@ function placementLabel(place: number) {
   return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
 }
 
-function calculateLeaderboardRows(matches: Match[], players: Player[], now = new Date()): LeaderboardRow[] {
+function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMode: ScoringMode, now = new Date()): LeaderboardRow[] {
   const playersById = new Map(players.map((player) => [player.id, player]));
+  const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const windowStart = subtractMonths(now, activeWindowMonths);
   const rows = new Map<string, Omit<LeaderboardRow, "rank" | "score" | "status">>();
 
@@ -118,7 +125,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
   matches.forEach((match) => {
     const matchTime = new Date(match.gameTime);
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
-    const gamePointsByPlayer = new Map(calculateGamePoints(match).map((result) => [result.playerId, result.gamePoints]));
+    const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
 
     rankedMatchPlayers(match).forEach((player) => {
       const row = ensureRow(player.playerId, player.playerName);
@@ -136,7 +143,7 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], now = new
     return {
       ...row,
       rank: null,
-      score: row.totalScore,
+      score: scoreBaseline + row.totalScore,
       status,
     };
   });
@@ -231,8 +238,9 @@ function PlacementChart({ playerId, points }: { playerId: string; points: Placem
               <div class="min-w-60 rounded-md border border-[#ded2a3] bg-white px-3 py-2 text-sm shadow-sm">
                 <div class="font-semibold text-[#25291f]">${placementLabel(point.place)} place (${signedNumber(point.gamePoints)})</div>
                 <div class="text-[#697061]">${gameTypeLabel(point.match.gameType)} - ${niceDate(point.match.gameTime)}</div>
-                <div class="text-[#697061]">${signedNumber(point.gamePoints)}</div>
-                <div class="text-[#697061]">Score after ${signedNumber(point.totalScore)}</div>
+                <div class="text-[#697061]">Normal ${signedNumber(point.normalGamePoints)}</div>
+                <div class="text-[#697061]">Mahjong Soul ${signedNumber(point.mahjongSoulGamePoints)}</div>
+                <div class="text-[#697061]">Normal score after ${signedNumber(point.totalScore)}</div>
                 <div class="mt-2 grid gap-1">${placements}</div>
               </div>
             `;
@@ -335,11 +343,15 @@ export default function PlayerPage({ id }: PlayerPageProps) {
         if (!result) {
           return null;
         }
+        const normalGamePoints = calculateGamePoints(match, "normal").find((point) => point.playerId === id)?.gamePoints || 0;
+        const mahjongSoulGamePoints = calculateGamePoints(match, "mahjongSoul").find((point) => point.playerId === id)?.gamePoints || 0;
 
         return {
-          gamePoints: calculateGamePoints(match).find((point) => point.playerId === id)?.gamePoints || 0,
+          gamePoints: normalGamePoints,
+          mahjongSoulGamePoints,
           match,
           matchTime: new Date(match.gameTime),
+          normalGamePoints,
           place: result.effectivePlace,
           score: result.score,
         };
@@ -347,11 +359,13 @@ export default function PlayerPage({ id }: PlayerPageProps) {
       .filter((point): point is NonNullable<typeof point> => point !== null);
 
     return records.map((record, index) => {
-      const totalScore = records.slice(0, index + 1).reduce((sum, point) => sum + point.gamePoints, 0);
+      const totalScore = records.slice(0, index + 1).reduce((sum, point) => sum + point.gamePoints, leaderboardScoreBaseline("normal"));
 
       return {
         gamePoints: record.gamePoints,
+        mahjongSoulGamePoints: record.mahjongSoulGamePoints,
         match: record.match,
+        normalGamePoints: record.normalGamePoints,
         place: record.place,
         score: record.score,
         totalScore,
@@ -359,8 +373,11 @@ export default function PlayerPage({ id }: PlayerPageProps) {
     });
   }, [id, state.matches]);
 
-  const leaderboardRow = useMemo(() => {
-    return calculateLeaderboardRows(state.allMatches, state.players).find((row) => row.playerId === id) || null;
+  const normalLeaderboardRow = useMemo(() => {
+    return calculateLeaderboardRows(state.allMatches, state.players, "normal").find((row) => row.playerId === id) || null;
+  }, [id, state.allMatches, state.players]);
+  const mahjongSoulLeaderboardRow = useMemo(() => {
+    return calculateLeaderboardRows(state.allMatches, state.players, "mahjongSoul").find((row) => row.playerId === id) || null;
   }, [id, state.allMatches, state.players]);
 
   const loading = state.loading || state.playerId !== id;
@@ -374,29 +391,35 @@ export default function PlayerPage({ id }: PlayerPageProps) {
         <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm">
           <h2 className="text-2xl font-bold">{state.name || id}</h2>
           <p className="mt-1 text-sm text-[#697061]">{state.matches.length} matches</p>
-          {leaderboardRow && (
+          {normalLeaderboardRow && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Rank</p>
-                <p className="text-lg font-bold">{leaderboardRow.rank || "-"}</p>
+                <p className="text-lg font-bold">{normalLeaderboardRow.rank || "-"}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase text-[#697061]">Score</p>
-                <p className="text-lg font-bold">{signedNumber(leaderboardRow.score)}</p>
+                <p className="text-xs font-semibold uppercase text-[#697061]">Normal score</p>
+                <p className="text-lg font-bold">{signedNumber(normalLeaderboardRow.score)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-[#697061]">Mahjong Soul</p>
+                <p className="text-lg font-bold">
+                  {mahjongSoulLeaderboardRow ? scoreNumber(mahjongSoulLeaderboardRow.score) : "-"}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Status</p>
-                <p className="text-lg font-bold">{statusLabel(leaderboardRow.status)}</p>
+                <p className="text-lg font-bold">{statusLabel(normalLeaderboardRow.status)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Games</p>
-                <p className="text-lg font-bold">{leaderboardRow.activeGames}</p>
+                <p className="text-lg font-bold">{normalLeaderboardRow.activeGames}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Placements</p>
                 <p className="text-sm font-semibold text-[#697061]">
-                  {leaderboardRow.placeCounts
-                    .map((count, index) => `${placementLabel(index + 1)} ${placePercent(count, leaderboardRow.totalGames)}`)
+                  {normalLeaderboardRow.placeCounts
+                    .map((count, index) => `${placementLabel(index + 1)} ${placePercent(count, normalLeaderboardRow.totalGames)}`)
                     .join(" / ")}
                 </p>
               </div>
