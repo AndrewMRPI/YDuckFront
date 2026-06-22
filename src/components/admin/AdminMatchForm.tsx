@@ -296,7 +296,8 @@ export function AdminMatchForm({ initialMatch, heading, submitLabel, savingError
                   <input
                     id={`match-score-${seat.key}`}
                     className="h-11 w-full rounded-md border border-[#ded2a3] bg-[#fffdf3] px-3 text-sm outline-none focus:border-[#8a261f] focus:ring-2 focus:ring-[#8a261f]/15"
-                    inputMode="numeric"
+                    inputMode="text"
+                    pattern="-?[0-9]*"
                     placeholder="Score"
                     type="text"
                     value={row.score}
