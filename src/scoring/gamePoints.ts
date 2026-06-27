@@ -35,8 +35,14 @@ const threePlayerStartingPoints = 35000;
 const fourPlayerUma = [15, 5, -5, -15];
 const threePlayerUma = [15, 0, -15];
 const mahjongSoulRankPoints = {
-  east: [40, 20, 0, -60],
-  south: [80, 40, 0, -120],
+  3: {
+    east: [60, 0, -60],
+    south: [120, 0, -120],
+  },
+  4: {
+    east: [40, 20, 0, -60],
+    south: [80, 40, 0, -120],
+  },
 };
 
 function roundHalfDown(value: number) {
@@ -58,11 +64,11 @@ function normalizedGameType(match: Match) {
 }
 
 function rankPointsForMatch(match: Match, effectivePlace: number, playerCount: number, scoringMode: ScoringMode) {
-  if (scoringMode !== "mahjongSoul" || playerCount !== 4) {
+  if (scoringMode !== "mahjongSoul" || (playerCount !== 3 && playerCount !== 4)) {
     return 0;
   }
 
-  return mahjongSoulRankPoints[normalizedGameType(match)][effectivePlace - 1] || 0;
+  return mahjongSoulRankPoints[playerCount][normalizedGameType(match)][effectivePlace - 1] || 0;
 }
 
 export function calculateGamePoints(match: Match, scoringMode: ScoringMode = "normal"): GamePointResult[] {

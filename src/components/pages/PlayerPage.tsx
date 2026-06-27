@@ -379,6 +379,7 @@ export default function PlayerPage({ id }: PlayerPageProps) {
   const mahjongSoulLeaderboardRow = useMemo(() => {
     return calculateLeaderboardRows(state.allMatches, state.players, "mahjongSoul").find((row) => row.playerId === id) || null;
   }, [id, state.allMatches, state.players]);
+  const profileLeaderboardRow = mahjongSoulLeaderboardRow || normalLeaderboardRow;
 
   const loading = state.loading || state.playerId !== id;
 
@@ -391,15 +392,15 @@ export default function PlayerPage({ id }: PlayerPageProps) {
         <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm">
           <h2 className="text-2xl font-bold">{state.name || id}</h2>
           <p className="mt-1 text-sm text-[#697061]">{state.matches.length} matches</p>
-          {normalLeaderboardRow && (
+          {profileLeaderboardRow && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div>
-                <p className="text-xs font-semibold uppercase text-[#697061]">Rank</p>
-                <p className="text-lg font-bold">{normalLeaderboardRow.rank || "-"}</p>
+                <p className="text-xs font-semibold uppercase text-[#697061]">Mahjong Soul rank</p>
+                <p className="text-lg font-bold">{mahjongSoulLeaderboardRow?.rank || "-"}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Normal score</p>
-                <p className="text-lg font-bold">{signedNumber(normalLeaderboardRow.score)}</p>
+                <p className="text-lg font-bold">{normalLeaderboardRow ? signedNumber(normalLeaderboardRow.score) : "-"}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Mahjong Soul</p>
@@ -409,17 +410,17 @@ export default function PlayerPage({ id }: PlayerPageProps) {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Status</p>
-                <p className="text-lg font-bold">{statusLabel(normalLeaderboardRow.status)}</p>
+                <p className="text-lg font-bold">{statusLabel(profileLeaderboardRow.status)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Games</p>
-                <p className="text-lg font-bold">{normalLeaderboardRow.activeGames}</p>
+                <p className="text-lg font-bold">{profileLeaderboardRow.activeGames}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase text-[#697061]">Placements</p>
                 <p className="text-sm font-semibold text-[#697061]">
-                  {normalLeaderboardRow.placeCounts
-                    .map((count, index) => `${placementLabel(index + 1)} ${placePercent(count, normalLeaderboardRow.totalGames)}`)
+                  {profileLeaderboardRow.placeCounts
+                    .map((count, index) => `${placementLabel(index + 1)} ${placePercent(count, profileLeaderboardRow.totalGames)}`)
                     .join(" / ")}
                 </p>
               </div>
