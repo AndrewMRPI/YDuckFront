@@ -12,7 +12,7 @@
   "dependencies": {
     "apexcharts": "^5.15.0",
     "flowbite": "^4.0.2",
-    "next": "^16.3.0-canary.6",
+    "next": "^16.3.0-canary.32",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -22,7 +22,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.0-canary.6",
+    "eslint-config-next": "^16.3.0-canary.32",
     "js-yaml": "^4.1.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^4",
