@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { loadYduckData, Match, Player, YduckData } from "@/services/yduckApiClient";
-import { calculateGamePoints, leaderboardScoreBaseline, scoringModes, ScoringMode } from "@/scoring/gamePoints";
+import { calculateGamePointBreakdowns, calculateGamePoints, leaderboardScoreBaseline, scoringModes, ScoringMode } from "@/scoring/gamePoints";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
-import { rankedMatchPlayers } from "@/utils/matchPlayers";
 
 type LeaderboardStatus = "active" | "provisional";
 
@@ -60,6 +59,7 @@ const activeGameMinimum = 3;
 const chartWidth = 920;
 const chartHeight = 360;
 const chartPadding = { bottom: 48, left: 56, right: 24, top: 22 };
+const disgracedScoreGap = 670;
 const playerColors = ["#24765d", "#2b6095", "#a43b31", "#6e4ca2", "#b05f18", "#137789", "#8a6d1d", "#656b70"];
 
 function signedNumber(value: number) {
@@ -119,8 +119,15 @@ function placePercent(placeCount: number, totalGames: number) {
   return `${Math.round((placeCount / totalGames) * 100)}%`;
 }
 
-function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMode: ScoringMode, now = new Date()): LeaderboardRow[] {
+function calculateLeaderboardRows(
+  matches: Match[],
+  players: Player[],
+  scoringMode: ScoringMode,
+  excludedPlayerId = "",
+  now = new Date(),
+): LeaderboardRow[] {
   const playersById = new Map(players.map((player) => [player.id, player]));
+  const excludedPlayerIds = excludedPlayerId ? [excludedPlayerId] : [];
   const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const windowStart = subtractMonths(now, activeWindowMonths);
   const rows = new Map<
@@ -150,24 +157,28 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMo
     return row;
   }
 
-  players.forEach((player) => ensureRow(player.id, player.name));
+  players.forEach((player) => {
+    if (player.id !== excludedPlayerId) {
+      ensureRow(player.id, player.name);
+    }
+  });
 
   // The page owns aggregation and active-window rules; scoring only converts one match.
   matches.forEach((match) => {
     const matchTime = new Date(match.gameTime);
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
-    const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
+    const matchPlayersById = new Map(match.players.map((player) => [player.playerId, player]));
 
-    rankedMatchPlayers(match).forEach((player) => {
-      const row = ensureRow(player.playerId, player.playerName);
-      const gamePoints = gamePointsByPlayer.get(player.playerId) || 0;
+    calculateGamePointBreakdowns(match, scoringMode, { excludedPlayerIds }).forEach((result) => {
+      const matchPlayer = matchPlayersById.get(result.playerId);
+      const row = ensureRow(result.playerId, matchPlayer?.playerName);
       row.totalGames += 1;
-      row.totalScore += gamePoints;
-      row.placeCounts[player.effectivePlace - 1] += 1;
+      row.totalScore += result.gamePoints;
+      row.placeCounts[result.effectivePlace - 1] += 1;
 
       if (isActiveWindow) {
         row.activeGames += 1;
-        row.activeScore += gamePoints;
+        row.activeScore += result.gamePoints;
       }
     });
   });
@@ -204,6 +215,17 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMo
   });
 }
 
+function findDisgracedOne(rows: LeaderboardRow[]) {
+  const rankOne = rows.find((row) => row.rank === 1);
+  const rankTwo = rows.find((row) => row.rank === 2);
+
+  if (!rankOne || !rankTwo || rankOne.score - rankTwo.score < disgracedScoreGap) {
+    return null;
+  }
+
+  return rankOne;
+}
+
 function chartTicks(minValue: number, maxValue: number) {
   const spread = Math.max(1, maxValue - minValue);
   const roughStep = spread / 4;
@@ -227,7 +249,17 @@ function matchSortValue(match: Match) {
   return Number.isNaN(time) ? 0 : time;
 }
 
-function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; rows: LeaderboardRow[]; scoringMode: ScoringMode }) {
+function ScoreOverTimeChart({
+  excludedPlayerId = "",
+  matches,
+  rows,
+  scoringMode,
+}: {
+  excludedPlayerId?: string;
+  matches: Match[];
+  rows: LeaderboardRow[];
+  scoringMode: ScoringMode;
+}) {
   const router = useRouter();
   const [hiddenPlayerIds, setHiddenPlayerIds] = useState<Set<string>>(new Set());
   const [hoverPoint, setHoverPoint] = useState<HoverPoint | null>(null);
@@ -255,9 +287,10 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
   const scale = useMemo(() => {
     const totals = new Map<string, number>();
     const values = [scoreBaseline];
+    const excludedPlayerIds = excludedPlayerId ? [excludedPlayerId] : [];
 
     sortedMatches.forEach((match) => {
-      calculateGamePoints(match, scoringMode).forEach((result) => {
+      calculateGamePoints(match, scoringMode, { excludedPlayerIds }).forEach((result) => {
         if (!playerById.has(result.playerId)) {
           return;
         }
@@ -282,10 +315,11 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
       chartPadding.top + ((maxTick - score) / Math.max(1, maxTick - minTick)) * plotHeight;
 
     return { maxTick, minTick, ticks, xForMatch, yForScore };
-  }, [playerById, scoreBaseline, scoringMode, sortedMatches]);
+  }, [excludedPlayerId, playerById, scoreBaseline, scoringMode, sortedMatches]);
   const series = useMemo<ChartSeries[]>(() => {
     const totals = new Map<string, number>();
     const nextSeries = new Map<string, ChartSeries>();
+    const excludedPlayerIds = excludedPlayerId ? [excludedPlayerId] : [];
 
     chartPlayers.forEach((player) => {
       nextSeries.set(player.playerId, {
@@ -297,8 +331,9 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
     });
 
     sortedMatches.forEach((match, matchIndex) => {
-      const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
-      const placeByPlayer = new Map(rankedMatchPlayers(match).map((player) => [player.playerId, player.effectivePlace]));
+      const breakdowns = calculateGamePointBreakdowns(match, scoringMode, { excludedPlayerIds });
+      const gamePointsByPlayer = new Map(breakdowns.map((result) => [result.playerId, result.gamePoints]));
+      const placeByPlayer = new Map(breakdowns.map((result) => [result.playerId, result.effectivePlace]));
 
       chartPlayers.forEach((player) => {
         const playerSeries = nextSeries.get(player.playerId);
@@ -351,7 +386,7 @@ function ScoreOverTimeChart({ matches, rows, scoringMode }: { matches: Match[]; 
     });
 
     return Array.from(nextSeries.values()).filter((playerSeries) => playerSeries.points.length > 0);
-  }, [chartPlayers, scale, scoreBaseline, scoringMode, sortedMatches]);
+  }, [chartPlayers, excludedPlayerId, scale, scoreBaseline, scoringMode, sortedMatches]);
   const xLabels = useMemo(() => {
     if (sortedMatches.length === 0) {
       return [];
@@ -649,8 +684,23 @@ export default function LeaderboardPage() {
     };
   }, []);
 
-  const rows = useMemo(() => calculateLeaderboardRows(data?.matches || [], data?.players || [], scoringMode), [data, scoringMode]);
+  const originalMahjongSoulRows = useMemo(
+    () => calculateLeaderboardRows(data?.matches || [], data?.players || [], "mahjongSoulWithDisgracedOne"),
+    [data],
+  );
+  const disgracedOne = useMemo(() => findDisgracedOne(originalMahjongSoulRows), [originalMahjongSoulRows]);
+  const excludedPlayerId = scoringMode === "mahjongSoul" ? disgracedOne?.playerId || "" : "";
+  const rows = useMemo(
+    () => calculateLeaderboardRows(data?.matches || [], data?.players || [], scoringMode, excludedPlayerId),
+    [data, excludedPlayerId, scoringMode],
+  );
   const hasActiveRows = rows.some((row) => row.status === "active");
+  const eternalMealQuote =
+    disgracedOne && scoringMode === "mahjongSoul"
+      ? "They fought amongst themselves to eat the others."
+      : disgracedOne && scoringMode === "mahjongSoulWithDisgracedOne"
+        ? "And the stronger side survived. That, simply, is the story."
+        : "";
 
   return (
     <AppShell>
@@ -660,14 +710,22 @@ export default function LeaderboardPage() {
           <p className="text-sm text-[#697061]">Scores use total game points from all matches.</p>
         </div>
 
+        {eternalMealQuote && (
+          <div className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-[#697061]">The Midnight of Amber</p>
+            <p className="text-lg font-extrabold text-[#25291f]">The Eternal Meal</p>
+            <p className="mt-2 text-sm font-semibold text-[#5f4c00]">&quot;{eternalMealQuote}&quot;</p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 rounded-lg border border-[#ded2a3] bg-white p-3 shadow-sm sm:flex-row sm:items-center">
           <p className="text-sm font-semibold text-[#25291f]">Scoring mode</p>
-          <div className="flex rounded-md border border-[#ded2a3] bg-[#fffdf3] p-1">
+          <div className="flex flex-wrap gap-1 rounded-md border border-[#ded2a3] bg-[#fffdf3] p-1">
             {scoringModes.map((mode) => {
               const active = scoringMode === mode.value;
               return (
                 <button
-                  className={`h-9 rounded px-3 text-sm font-semibold ${
+                  className={`min-h-9 rounded px-3 py-2 text-sm font-semibold ${
                     active ? "bg-[#1f2720] text-white" : "text-[#25291f] hover:bg-[#fff8d4]"
                   }`}
                   key={mode.value}
@@ -737,7 +795,7 @@ export default function LeaderboardPage() {
         )}
 
         {!loading && !error && data && rows.length > 0 && (
-          <ScoreOverTimeChart matches={data.matches} rows={rows} scoringMode={scoringMode} />
+          <ScoreOverTimeChart excludedPlayerId={excludedPlayerId} matches={data.matches} rows={rows} scoringMode={scoringMode} />
         )}
       </section>
     </AppShell>

@@ -4,7 +4,7 @@ import type { ApexOptions } from "apexcharts";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { calculateGamePoints, leaderboardScoreBaseline, ScoringMode } from "@/scoring/gamePoints";
+import { calculateGamePointBreakdowns, calculateGamePoints, leaderboardScoreBaseline, ScoringMode } from "@/scoring/gamePoints";
 import { loadMatchesByPlayer, loadYduckData, Match, Player } from "@/services/yduckApiClient";
 import { gameTypeLabel, niceDate } from "@/utils/matchFormatting";
 import { rankedMatchPlayers, seatedMatchPlayers, seatLabel } from "@/utils/matchPlayers";
@@ -50,6 +50,7 @@ type PlayerPageState = {
 
 const activeWindowMonths = 3;
 const activeGameMinimum = 3;
+const disgracedScoreGap = 670;
 
 function signedNumber(value: number) {
   return value > 0 ? `+${value}` : `${value}`;
@@ -92,8 +93,15 @@ function placementLabel(place: number) {
   return `${place}${place === 1 ? "st" : place === 2 ? "nd" : place === 3 ? "rd" : "th"}`;
 }
 
-function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMode: ScoringMode, now = new Date()): LeaderboardRow[] {
+function calculateLeaderboardRows(
+  matches: Match[],
+  players: Player[],
+  scoringMode: ScoringMode,
+  excludedPlayerId = "",
+  now = new Date(),
+): LeaderboardRow[] {
   const playersById = new Map(players.map((player) => [player.id, player]));
+  const excludedPlayerIds = excludedPlayerId ? [excludedPlayerId] : [];
   const scoreBaseline = leaderboardScoreBaseline(scoringMode);
   const windowStart = subtractMonths(now, activeWindowMonths);
   const rows = new Map<string, Omit<LeaderboardRow, "rank" | "score" | "status">>();
@@ -120,21 +128,25 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMo
     return row;
   }
 
-  players.forEach((player) => ensureRow(player.id, player.name));
+  players.forEach((player) => {
+    if (player.id !== excludedPlayerId) {
+      ensureRow(player.id, player.name);
+    }
+  });
 
   matches.forEach((match) => {
     const matchTime = new Date(match.gameTime);
     const isActiveWindow = !Number.isNaN(matchTime.getTime()) && matchTime >= windowStart && matchTime <= now;
-    const gamePointsByPlayer = new Map(calculateGamePoints(match, scoringMode).map((result) => [result.playerId, result.gamePoints]));
+    const matchPlayersById = new Map(match.players.map((player) => [player.playerId, player]));
 
-    rankedMatchPlayers(match).forEach((player) => {
-      const row = ensureRow(player.playerId, player.playerName);
-      const gamePoints = gamePointsByPlayer.get(player.playerId) || 0;
+    calculateGamePointBreakdowns(match, scoringMode, { excludedPlayerIds }).forEach((result) => {
+      const matchPlayer = matchPlayersById.get(result.playerId);
+      const row = ensureRow(result.playerId, matchPlayer?.playerName);
       row.activeGames += isActiveWindow ? 1 : 0;
-      row.activeScore += isActiveWindow ? gamePoints : 0;
-      row.placeCounts[player.effectivePlace - 1] += 1;
+      row.activeScore += isActiveWindow ? result.gamePoints : 0;
+      row.placeCounts[result.effectivePlace - 1] += 1;
       row.totalGames += 1;
-      row.totalScore += gamePoints;
+      row.totalScore += result.gamePoints;
     });
   });
 
@@ -156,6 +168,21 @@ function calculateLeaderboardRows(matches: Match[], players: Player[], scoringMo
     });
 
   return withStats;
+}
+
+function findDisgracedOne(rows: LeaderboardRow[]) {
+  const rankOne = rows.find((row) => row.rank === 1);
+  const rankTwo = rows.find((row) => row.rank === 2);
+
+  if (!rankOne || !rankTwo || rankOne.score - rankTwo.score < disgracedScoreGap) {
+    return null;
+  }
+
+  return rankOne;
+}
+
+function disgracedQuote(playerName: string) {
+  return `Are you the sweatest because you're ${playerName}? Or are you ${playerName} because you're the sweatest?`;
 }
 
 function PlacementChart({ playerId, points }: { playerId: string; points: PlacementPoint[] }) {
@@ -376,10 +403,16 @@ export default function PlayerPage({ id }: PlayerPageProps) {
   const normalLeaderboardRow = useMemo(() => {
     return calculateLeaderboardRows(state.allMatches, state.players, "normal").find((row) => row.playerId === id) || null;
   }, [id, state.allMatches, state.players]);
+  const originalMahjongSoulLeaderboardRows = useMemo(() => {
+    return calculateLeaderboardRows(state.allMatches, state.players, "mahjongSoulWithDisgracedOne");
+  }, [state.allMatches, state.players]);
+  const disgracedOne = useMemo(() => findDisgracedOne(originalMahjongSoulLeaderboardRows), [originalMahjongSoulLeaderboardRows]);
   const mahjongSoulLeaderboardRow = useMemo(() => {
-    return calculateLeaderboardRows(state.allMatches, state.players, "mahjongSoul").find((row) => row.playerId === id) || null;
-  }, [id, state.allMatches, state.players]);
+    return originalMahjongSoulLeaderboardRows.find((row) => row.playerId === id) || null;
+  }, [id, originalMahjongSoulLeaderboardRows]);
   const profileLeaderboardRow = mahjongSoulLeaderboardRow || normalLeaderboardRow;
+  const isDisgracedOne = disgracedOne?.playerId === id;
+  const playerName = state.name || id;
 
   const loading = state.loading || state.playerId !== id;
 
@@ -390,7 +423,7 @@ export default function PlayerPage({ id }: PlayerPageProps) {
         {state.error && <p className="rounded-md border border-[#d99494] bg-[#fff3f0] p-3 text-sm text-[#8a261f]">{state.error}</p>}
 
         <article className="rounded-lg border border-[#ded2a3] bg-white p-4 shadow-sm">
-          <h2 className="text-2xl font-bold">{state.name || id}</h2>
+          <h2 className="text-2xl font-bold">{playerName}</h2>
           <p className="mt-1 text-sm text-[#697061]">{state.matches.length} matches</p>
           {profileLeaderboardRow && (
             <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -434,6 +467,7 @@ export default function PlayerPage({ id }: PlayerPageProps) {
           </div>
           <PlacementChart playerId={id} points={placementPoints} />
         </article>
+        {isDisgracedOne && <p className="text-sm font-semibold text-[#5f4c00]">{disgracedQuote(playerName)}</p>}
       </section>
     </AppShell>
   );

@@ -6,7 +6,11 @@ export type GamePointResult = {
   gamePoints: number;
 };
 
-export type ScoringMode = "normal" | "mahjongSoul";
+export type ScoringMode = "normal" | "mahjongSoul" | "mahjongSoulWithDisgracedOne";
+
+type GamePointOptions = {
+  excludedPlayerIds?: readonly string[];
+};
 
 export type GamePointBreakdown = GamePointResult & {
   adjustment: number;
@@ -21,13 +25,14 @@ export type GamePointBreakdown = GamePointResult & {
 
 export const scoringModes: { label: string; value: ScoringMode }[] = [
   { label: "Mahjong Soul", value: "mahjongSoul" },
+  { label: "Mahjong Soul with The Disgraced One", value: "mahjongSoulWithDisgracedOne" },
   { label: "Normal", value: "normal" },
 ];
 
 export const leaderboardStartingScore = 1500;
 
 export function leaderboardScoreBaseline(scoringMode: ScoringMode) {
-  return scoringMode === "mahjongSoul" ? leaderboardStartingScore : 0;
+  return scoringMode === "normal" ? 0 : leaderboardStartingScore;
 }
 
 const fourPlayerStartingPoints = 25000;
@@ -64,19 +69,34 @@ function normalizedGameType(match: Match) {
 }
 
 function rankPointsForMatch(match: Match, effectivePlace: number, playerCount: number, scoringMode: ScoringMode) {
-  if (scoringMode !== "mahjongSoul" || (playerCount !== 3 && playerCount !== 4)) {
+  if (scoringMode === "normal" || (playerCount !== 3 && playerCount !== 4)) {
     return 0;
   }
 
   return mahjongSoulRankPoints[playerCount][normalizedGameType(match)][effectivePlace - 1] || 0;
 }
 
-export function calculateGamePoints(match: Match, scoringMode: ScoringMode = "normal"): GamePointResult[] {
-  return calculateGamePointBreakdowns(match, scoringMode).map(({ playerId, gamePoints }) => ({ playerId, gamePoints }));
+function rankedScoringPlayers(match: Match, scoringMode: ScoringMode, options: GamePointOptions) {
+  const excludedPlayerIds = new Set(scoringMode === "mahjongSoul" ? options.excludedPlayerIds || [] : []);
+  const players = excludedPlayerIds.size > 0 ? match.players.filter((player) => !excludedPlayerIds.has(player.playerId)) : match.players;
+
+  if (players.length !== 3 && players.length !== 4) {
+    return [];
+  }
+
+  return rankedMatchPlayers({ ...match, players });
 }
 
-export function calculateGamePointBreakdowns(match: Match, scoringMode: ScoringMode = "normal"): GamePointBreakdown[] {
-  const players = rankedMatchPlayers(match);
+export function calculateGamePoints(match: Match, scoringMode: ScoringMode = "normal", options: GamePointOptions = {}): GamePointResult[] {
+  return calculateGamePointBreakdowns(match, scoringMode, options).map(({ playerId, gamePoints }) => ({ playerId, gamePoints }));
+}
+
+export function calculateGamePointBreakdowns(
+  match: Match,
+  scoringMode: ScoringMode = "normal",
+  options: GamePointOptions = {},
+): GamePointBreakdown[] {
+  const players = rankedScoringPlayers(match, scoringMode, options);
   const { startingPoints, uma } = pointsConfig(players.length);
   const results = players.map((player) => {
     const basePoints = roundHalfDown((player.score - startingPoints) / 1000);
